@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const Budget = require('../models/Budget');
 
@@ -11,7 +12,7 @@ router.get('/status', async (req, res) => {
     const results = await Promise.all(budgets.map(async (budget) => {
       const match = budget.scope === 'overall'
         ? {}
-        : { category: budget.scope };
+        : { category: new mongoose.Types.ObjectId(budget.scope) };
 
       const spendResult = await Expense.aggregate([
         { $match: match },
