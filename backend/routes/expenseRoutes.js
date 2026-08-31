@@ -16,7 +16,9 @@ router.post('/', async (req, res) => {
 // READ - get all expenses
 router.get('/', async (req, res) => {
   try {
-    const expenses = await Expense.find().sort({ date: -1 }); // newest first
+    const expenses = await Expense.find()
+      .populate('category')
+      .sort({ date: -1 }); // newest first
     res.json(expenses);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -26,7 +28,7 @@ router.get('/', async (req, res) => {
 // READ - get a single expense by id
 router.get('/:id', async (req, res) => {
   try {
-    const expense = await Expense.findById(req.params.id);
+    const expense = await Expense.findById(req.params.id).populate('category');
     if (!expense) return res.status(404).json({ message: 'Expense not found' });
     res.json(expense);
   } catch (error) {
@@ -40,8 +42,8 @@ router.put('/:id', async (req, res) => {
     const updatedExpense = await Expense.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true, runValidators: true } // return the updated doc, and re-check schema rules
-    );
+      { new: true, runValidators: true }
+    ).populate('category');
     if (!updatedExpense) return res.status(404).json({ message: 'Expense not found' });
     res.json(updatedExpense);
   } catch (error) {
