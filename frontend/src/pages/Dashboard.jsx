@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { getExpenses, createExpense } from '../api/expenseApi';
-import { getCategories } from '../api/categoryApi';
+import { getCategories, createCategory } from '../api/categoryApi';
 
 function Dashboard() {
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -52,6 +54,20 @@ function Dashboard() {
     }
   }
 
+  async function handleCreateCategory() {
+    if (!newCategoryName.trim()) return;
+
+    try {
+      const newCategory = await createCategory(newCategoryName.trim());
+      setCategories((prev) => [...prev, newCategory]); // add it to the dropdown list
+      setCategoryId(newCategory._id);                   // auto-select the new category
+      setNewCategoryName('');
+      setIsCreatingCategory(false);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   if (loading) return <p className="p-6">Loading...</p>;
   if (error) return <p className="p-6 text-red-500">Error: {error}</p>;
 
@@ -84,16 +100,51 @@ function Dashboard() {
 
         <div>
           <label className="block text-sm font-medium">Category (optional)</label>
-          <select
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            className="border rounded w-full p-2"
-          >
-            <option value="">-- None (Miscellaneous) --</option>
-            {categories.map((cat) => (
-              <option key={cat._id} value={cat._id}>{cat.name}</option>
-            ))}
-          </select>
+
+          {!isCreatingCategory ? (
+            <select
+              value={categoryId}
+              onChange={(e) => {
+                if (e.target.value === '__create_new__') {
+                  setIsCreatingCategory(true);
+                } else {
+                  setCategoryId(e.target.value);
+                }
+              }}
+              className="border rounded w-full p-2"
+            >
+              <option value="">-- None (Miscellaneous) --</option>
+              {categories.map((cat) => (
+                <option key={cat._id} value={cat._id}>{cat.name}</option>
+              ))}
+              <option value="__create_new__">+ Create new category</option>
+            </select>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="New category name"
+                className="border rounded w-full p-2"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={handleCreateCategory}
+                className="bg-pink-500 text-white px-3 rounded hover:bg-pink-600"
+              >
+                Add
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCreatingCategory(false)}
+                className="border px-3 rounded"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
 
         <button
