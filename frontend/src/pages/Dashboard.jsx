@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getExpenses, createExpense } from '../api/expenseApi';
 import { getCategories, createCategory } from '../api/categoryApi';
+import { getBudgetStatus, setBudget } from '../api/budgetApi';
 
 function Dashboard() {
   const [expenses, setExpenses] = useState([]);
@@ -9,6 +10,10 @@ function Dashboard() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [budgetStatus, setBudgetStatus] = useState([]);
+  const [budgetScope, setBudgetScope] = useState('overall');
+  const [budgetLimit, setBudgetLimit] = useState('');
 
   const [amount, setAmount] = useState('');
   const [shopName, setShopName] = useState('');
@@ -19,15 +24,22 @@ function Dashboard() {
     setExpenses(data);
   }
 
+  async function loadBudgetStatus() {
+    const data = await getBudgetStatus();
+    setBudgetStatus(data);
+  }
+
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const [expenseData, categoryData] = await Promise.all([
+        const [expenseData, categoryData, budgetData] = await Promise.all([
           getExpenses(),
           getCategories(),
+          getBudgetStatus(),
         ]);
         setExpenses(expenseData);
         setCategories(categoryData);
+        setBudgetStatus(budgetData);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -66,6 +78,23 @@ function Dashboard() {
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  async function handleSetBudget(e) {
+    e.preventDefault();
+    try {
+      await setBudget(budgetScope, Number(budgetLimit));
+      setBudgetLimit('');
+      await loadBudgetStatus();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function getCategoryName(scope) {
+    if (scope === 'overall') return 'Overall';
+    const match = categories.find((cat) => cat._id === scope);
+    return match ? match.name : 'Unknown category';
   }
 
   if (loading) return <p className="p-6">Loading...</p>;
@@ -154,6 +183,58 @@ function Dashboard() {
           Add Expense
         </button>
       </form>
+
+      <div className="mb-8 border rounded p-4">
+        <h2 className="text-xl font-semibold mb-3">Set a Budget</h2>
+
+        <form onSubmit={handleSetBudget} className="flex gap-2 mb-4">
+          <select
+            value={budgetScope}
+            onChange={(e) => setBudgetScope(e.target.value)}
+            className="border rounded p-2"
+          >
+            <option value="overall">Overall</option>
+            {categories.map((cat) => (
+              <option key={cat._id} value={cat._id}>{cat.name}</option>
+            ))}
+          </select>
+
+          <input
+            type="number"
+            value={budgetLimit}
+            onChange={(e) => setBudgetLimit(e.target.value)}
+            placeholder="Limit"
+            required
+            className="border rounded p-2 w-32"
+          />
+
+          <button
+            type="submit"
+            className="bg-pink-500 text-white px-4 rounded hover:bg-pink-600"
+          >
+            Save
+          </button>
+        </form>
+
+        <div className="space-y-2">
+          {budgetStatus.map((b) => (
+            <div key={b.scope}>
+              <div className="flex justify-between text-sm mb-1">
+                <span>{getCategoryName(b.scope)}</span>
+                <span>${b.spent} / ${b.limit}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded h-3">
+                <div
+                  className={`h-3 rounded ${
+                    b.isOverBudget ? 'bg-red-500' : b.percentage > 70 ? 'bg-yellow-400' : 'bg-green-500'
+                  }`}
+                  style={{ width: `${b.percentage}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       <ul className="space-y-2">
         {expenses.map((expense) => (
