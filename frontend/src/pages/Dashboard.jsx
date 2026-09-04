@@ -4,6 +4,8 @@ import { getCategories, createCategory } from '../api/categoryApi';
 import { getBudgetStatus, setBudget } from '../api/budgetApi';
 import { PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { getCategorySpendData, getSpendOverTimeData } from '../utils/chartHelpers';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 const CATEGORY_COLORS = ['#D88C9A', '#C77B8C', '#E8B4BC', '#B5828C', '#F2D4D7', '#9C6B7A', '#EFC3CB'];
 
@@ -22,6 +24,7 @@ function Dashboard() {
   const [amount, setAmount] = useState('');
   const [shopName, setShopName] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [expenseDate, setExpenseDate] = useState(new Date());
 
   async function loadExpenses() {
     const data = await getExpenses();
@@ -60,10 +63,12 @@ function Dashboard() {
         amount: Number(amount),
         shopName,
         category: categoryId || null,
+        date: expenseDate,
       });
       setAmount('');
       setShopName('');
       setCategoryId('');
+      setExpenseDate(new Date());
       await loadExpenses();
     } catch (err) {
       setError(err.message);
@@ -130,6 +135,17 @@ function Dashboard() {
             value={shopName}
             onChange={(e) => setShopName(e.target.value)}
             required
+            className="border rounded w-full p-2"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium">Date</label>
+          <DatePicker
+            selected={expenseDate}
+            onChange={(date) => setExpenseDate(date)}
+            dateFormat="MMMM d, yyyy"
+            maxDate={new Date()}
             className="border rounded w-full p-2"
           />
         </div>
@@ -287,6 +303,9 @@ function Dashboard() {
             {expense.category && (
               <span className="ml-2 text-sm text-gray-500">({expense.category.name})</span>
             )}
+            <span className="ml-2 text-xs text-gray-400">
+              {new Date(expense.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
           </li>
         ))}
       </ul>
