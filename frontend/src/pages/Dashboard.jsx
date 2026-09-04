@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { getExpenses, createExpense } from '../api/expenseApi';
 import { getCategories, createCategory } from '../api/categoryApi';
 import { getBudgetStatus, setBudget } from '../api/budgetApi';
+import { PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { getCategorySpendData, getSpendOverTimeData } from '../utils/chartHelpers';
+
+const CATEGORY_COLORS = ['#D88C9A', '#C77B8C', '#E8B4BC', '#B5828C', '#F2D4D7', '#9C6B7A', '#EFC3CB'];
 
 function Dashboard() {
   const [expenses, setExpenses] = useState([]);
@@ -99,6 +103,9 @@ function Dashboard() {
 
   if (loading) return <p className="p-6">Loading...</p>;
   if (error) return <p className="p-6 text-red-500">Error: {error}</p>;
+
+  const categoryData = getCategorySpendData(expenses);
+  const timeData = getSpendOverTimeData(expenses);
 
   return (
     <div className="p-6 max-w-xl mx-auto">
@@ -215,6 +222,43 @@ function Dashboard() {
             Save
           </button>
         </form>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="border rounded p-4">
+            <h2 className="text-lg font-semibold mb-2">Spend by Category</h2>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={categoryData}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={60}
+                  outerRadius={90}
+                  paddingAngle={2}
+                >
+                  {categoryData.map((entry, index) => (
+                    <Cell key={entry.name} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="border rounded p-4">
+            <h2 className="text-lg font-semibold mb-2">Spend Over Time</h2>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={timeData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="amount" fill="#D88C9A" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
 
         <div className="space-y-2">
           {budgetStatus.map((b) => (
