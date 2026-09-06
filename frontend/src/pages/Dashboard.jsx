@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getExpenses, createExpense } from '../api/expenseApi';
+import { getExpenses, createExpense, updateExpense, deleteExpense } from '../api/expenseApi';
 import { getCategories, createCategory } from '../api/categoryApi';
 import { getBudgetStatus, setBudget } from '../api/budgetApi';
 import { PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
@@ -25,6 +25,7 @@ function Dashboard() {
   const [shopName, setShopName] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [expenseDate, setExpenseDate] = useState(new Date());
+  const [editingId, setEditingId] = useState(null);
 
   async function loadExpenses() {
     const data = await getExpenses();
@@ -59,12 +60,20 @@ function Dashboard() {
   async function handleSubmit(e) {
     e.preventDefault();
     try {
-      await createExpense({
+      const expenseData = {
         amount: Number(amount),
         shopName,
         category: categoryId || null,
         date: expenseDate,
-      });
+      };
+
+      if (editingId) {
+        await updateExpense(editingId, expenseData);
+        setEditingId(null);
+      } else {
+        await createExpense(expenseData);
+      }
+
       setAmount('');
       setShopName('');
       setCategoryId('');
@@ -73,6 +82,23 @@ function Dashboard() {
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  async function handleDelete(id) {
+    try {
+      await deleteExpense(id);
+      await loadExpenses();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function startEditing(expense) {
+    setEditingId(expense._id);
+    setAmount(expense.amount);
+    setShopName(expense.shopName);
+    setCategoryId(expense.category?._id || '');
+    setExpenseDate(new Date(expense.date));
   }
 
   async function handleCreateCategory() {
@@ -199,12 +225,30 @@ function Dashboard() {
           )}
         </div>
 
-        <button
-          type="submit"
-          className="bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-600"
-        >
-          Add Expense
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            className="bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-600"
+          >
+            {editingId ? 'Update Expense' : 'Add Expense'}
+          </button>
+
+          {editingId && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingId(null);
+                setAmount('');
+                setShopName('');
+                setCategoryId('');
+                setExpenseDate(new Date());
+              }}
+              className="border px-4 py-2 rounded"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </form>
 
       <div className="mb-8 border rounded p-4">
@@ -298,14 +342,31 @@ function Dashboard() {
 
       <ul className="space-y-2">
         {expenses.map((expense) => (
-          <li key={expense._id} className="border rounded p-3">
-            <span className="font-semibold">{expense.shopName}</span> — ${expense.amount}
-            {expense.category && (
-              <span className="ml-2 text-sm text-gray-500">({expense.category.name})</span>
-            )}
-            <span className="ml-2 text-xs text-gray-400">
-              {new Date(expense.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </span>
+          <li key={expense._id} className="border rounded p-3 flex justify-between items-center">
+            <div>
+              <span className="font-semibold">{expense.shopName}</span> — ${expense.amount}
+              {expense.category && (
+                <span className="ml-2 text-sm text-gray-500">({expense.category.name})</span>
+              )}
+              <span className="ml-2 text-xs text-gray-400">
+                {new Date(expense.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => startEditing(expense)}
+                className="text-sm text-blue-500 hover:underline"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => handleDelete(expense._id)}
+                className="text-sm text-red-500 hover:underline"
+              >
+                Delete
+              </button>
+            </div>
           </li>
         ))}
       </ul>
