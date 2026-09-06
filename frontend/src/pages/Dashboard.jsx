@@ -26,6 +26,7 @@ function Dashboard() {
   const [categoryId, setCategoryId] = useState('');
   const [expenseDate, setExpenseDate] = useState(new Date());
   const [editingId, setEditingId] = useState(null);
+  const [isMixed, setIsMixed] = useState(false);
 
   async function loadExpenses() {
     const data = await getExpenses();
@@ -65,6 +66,7 @@ function Dashboard() {
         shopName,
         category: categoryId || null,
         date: expenseDate,
+        isMixed,
       };
 
       if (editingId) {
@@ -78,6 +80,7 @@ function Dashboard() {
       setShopName('');
       setCategoryId('');
       setExpenseDate(new Date());
+      setIsMixed(false);
       await loadExpenses();
     } catch (err) {
       setError(err.message);
@@ -130,6 +133,23 @@ function Dashboard() {
     if (scope === 'overall') return 'Overall';
     const match = categories.find((cat) => cat._id === scope);
     return match ? match.name : 'Unknown category';
+  }
+
+  function startEditing(expense) {
+    setEditingId(expense._id);
+    setAmount(expense.amount);
+    setShopName(expense.shopName);
+    setCategoryId(expense.category?._id || '');
+    setExpenseDate(new Date(expense.date));
+    setIsMixed(expense.isMixed || false);
+  }
+
+  function handleMixedChange(checked) {
+    setIsMixed(checked);
+    if (checked) {
+      const misc = categories.find((cat) => cat.name === 'Miscellaneous');
+      if (misc) setCategoryId(misc._id);
+    }
   }
 
   if (loading) return <p className="p-6">Loading...</p>;
@@ -225,6 +245,19 @@ function Dashboard() {
           )}
         </div>
 
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="isMixed"
+            checked={isMixed}
+            onChange={(e) => handleMixedChange(e.target.checked)}
+            className="h-4 w-4"
+          />
+          <label htmlFor="isMixed" className="text-sm">
+            This covers a mix of different products
+          </label>
+        </div>
+
         <div className="flex gap-2">
           <button
             type="submit"
@@ -242,6 +275,7 @@ function Dashboard() {
                 setShopName('');
                 setCategoryId('');
                 setExpenseDate(new Date());
+                setIsMixed(false);
               }}
               className="border px-4 py-2 rounded"
             >
@@ -347,6 +381,9 @@ function Dashboard() {
               <span className="font-semibold">{expense.shopName}</span> — ${expense.amount}
               {expense.category && (
                 <span className="ml-2 text-sm text-gray-500">({expense.category.name})</span>
+              )}
+              {expense.isMixed && (
+                <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">Mixed</span>
               )}
               <span className="ml-2 text-xs text-gray-400">
                 {new Date(expense.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
