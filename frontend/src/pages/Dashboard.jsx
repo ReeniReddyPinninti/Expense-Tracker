@@ -7,6 +7,7 @@ import SpendHeatmap from '../components/SpendHeatmap';
 import { getExpenses, createExpense, updateExpense, deleteExpense } from '../api/expenseApi';
 import { getCategories, createCategory } from '../api/categoryApi';
 import { getBudgetStatus, setBudget } from '../api/budgetApi';
+import Toast from '../components/Toast';
 
 const CATEGORY_COLORS = ['#D88C9A', '#C77B8C', '#E8B4BC', '#B5828C', '#F2D4D7', '#9C6B7A', '#EFC3CB'];
 
@@ -29,6 +30,8 @@ function Dashboard() {
 
   const [budgetScope, setBudgetScope] = useState('overall');
   const [budgetLimit, setBudgetLimit] = useState('');
+
+  const [toast, setToast] = useState(null);
 
   async function loadExpenses() {
     const data = await getExpenses();
@@ -77,6 +80,11 @@ function Dashboard() {
     }
   }
 
+  function showToast(message, type = 'success') {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     try {
@@ -89,8 +97,10 @@ function Dashboard() {
       };
       if (editingId) {
         await updateExpense(editingId, expenseData);
+        showToast('Expense updated');
       } else {
         await createExpense(expenseData);
+        showToast('Expense added');
       }
       resetForm();
       await loadExpenses();
@@ -111,6 +121,7 @@ function Dashboard() {
   async function handleDelete(id) {
     try {
       await deleteExpense(id);
+      showToast('Expense deleted', 'error');
       await loadExpenses();
     } catch (err) {
       setError(err.message);
@@ -125,6 +136,7 @@ function Dashboard() {
       setCategoryId(newCategory._id);
       setNewCategoryName('');
       setIsCreatingCategory(false);
+      showToast('Category created');
     } catch (err) {
       setError(err.message);
     }
@@ -134,6 +146,7 @@ function Dashboard() {
     e.preventDefault();
     try {
       await setBudget(budgetScope, Number(budgetLimit));
+      showToast('Budget updated');
       setBudgetLimit('');
       await loadBudgetStatus();
     } catch (err) {
@@ -485,6 +498,13 @@ function Dashboard() {
         </div>
 
       </div>
+      {toast && (
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast(null)}
+      />
+    )}
     </div>
   );
 }
