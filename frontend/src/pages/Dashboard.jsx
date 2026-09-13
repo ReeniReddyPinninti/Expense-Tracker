@@ -11,6 +11,20 @@ import Toast from '../components/Toast';
 
 const CATEGORY_COLORS = ['#D88C9A', '#C77B8C', '#E8B4BC', '#B5828C', '#F2D4D7', '#9C6B7A', '#EFC3CB'];
 
+function toDateOnlyString(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`; // e.g. "2026-09-07", built from LOCAL date parts
+}
+
+function fromDateOnlyString(dateStr) {
+  // Take only the date portion, whether it's "2026-09-07" or "2026-09-07T18:30:00.000Z"
+  const datePart = String(dateStr).split('T')[0];
+  const [year, month, day] = datePart.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 function Dashboard() {
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -92,7 +106,7 @@ function Dashboard() {
         amount: Number(amount),
         shopName,
         category: categoryId || null,
-        date: expenseDate,
+        date: toDateOnlyString(expenseDate),
         isMixed,
       };
       if (editingId) {
@@ -114,7 +128,7 @@ function Dashboard() {
     setAmount(expense.amount);
     setShopName(expense.shopName);
     setCategoryId(expense.category?._id || '');
-    setExpenseDate(new Date(expense.date));
+    setExpenseDate(fromDateOnlyString(expense.date));   // ← changed
     setIsMixed(expense.isMixed || false);
   }
 
@@ -473,7 +487,7 @@ function Dashboard() {
                       )}
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(expense.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {fromDateOnlyString(expense.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </div>
 

@@ -53,7 +53,7 @@ function SpendHeatmap({ expenses }) {
   }, [expenses]);
 
   const selectedDayExpenses = selectedDay
-    ? expenses.filter((e) => new Date(e.date).toISOString().split('T')[0] === selectedDay)
+    ? expenses.filter((e) => String(e.date).split('T')[0] === selectedDay)
     : [];
 
   return (
