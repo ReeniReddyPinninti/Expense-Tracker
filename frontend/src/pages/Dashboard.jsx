@@ -46,6 +46,7 @@ function Dashboard() {
   const [budgetLimit, setBudgetLimit] = useState('');
 
   const [toast, setToast] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   async function loadExpenses() {
     const data = await getExpenses();
@@ -132,14 +133,23 @@ function Dashboard() {
     setIsMixed(expense.isMixed || false);
   }
 
-  async function handleDelete(id) {
+  function requestDelete(id) {
+    setConfirmDeleteId(id);
+  }
+
+  async function confirmDelete() {
     try {
-      await deleteExpense(id);
+      await deleteExpense(confirmDeleteId);
       showToast('Expense deleted', 'error');
+      setConfirmDeleteId(null);
       await loadExpenses();
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  function cancelDelete() {
+    setConfirmDeleteId(null);
   }
 
   async function handleCreateCategory() {
@@ -499,7 +509,7 @@ function Dashboard() {
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(expense._id)}
+                      onClick={() => requestDelete(expense._id)}
                       className="text-xs text-gray-400 hover:text-red-400 transition-colors"
                     >
                       Delete
@@ -518,6 +528,28 @@ function Dashboard() {
         type={toast.type}
         onClose={() => setToast(null)}
       />
+    )}
+    {confirmDeleteId && (
+      <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-lg p-6 max-w-sm w-full mx-4">
+          <h3 className="text-lg font-semibold text-[#3A3335] mb-2">Delete this expense?</h3>
+          <p className="text-sm text-gray-500 mb-5">This can't be undone.</p>
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={cancelDelete}
+              className="border border-gray-200 px-4 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="bg-red-400 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-500 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
     )}
     </div>
   );
