@@ -47,6 +47,7 @@ function Dashboard() {
 
   const [toast, setToast] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [pendingUpdate, setPendingUpdate] = useState(null);
 
   async function loadExpenses() {
     const data = await getExpenses();
@@ -100,16 +101,28 @@ function Dashboard() {
     setTimeout(() => setToast(null), 3000);
   }
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault();
+
+    const expenseData = {
+      amount: Number(amount),
+      shopName,
+      category: categoryId || null,
+      date: toDateOnlyString(expenseDate),
+      isMixed,
+    };
+
+    if (editingId) {
+      // don't save yet — ask for confirmation first
+      setPendingUpdate(expenseData);
+    } else {
+      // creating a new expense doesn't need confirmation
+      submitExpense(expenseData);
+    }
+  }
+
+  async function submitExpense(expenseData) {
     try {
-      const expenseData = {
-        amount: Number(amount),
-        shopName,
-        category: categoryId || null,
-        date: toDateOnlyString(expenseDate),
-        isMixed,
-      };
       if (editingId) {
         await updateExpense(editingId, expenseData);
         showToast('Expense updated');
@@ -124,12 +137,21 @@ function Dashboard() {
     }
   }
 
+  async function confirmUpdate() {
+    await submitExpense(pendingUpdate);
+    setPendingUpdate(null);
+  }
+
+  function cancelUpdate() {
+    setPendingUpdate(null);
+  }
+
   function startEditing(expense) {
     setEditingId(expense._id);
     setAmount(expense.amount);
     setShopName(expense.shopName);
     setCategoryId(expense.category?._id || '');
-    setExpenseDate(fromDateOnlyString(expense.date));   // ← changed
+    setExpenseDate(fromDateOnlyString(expense.date));
     setIsMixed(expense.isMixed || false);
   }
 
@@ -546,6 +568,31 @@ function Dashboard() {
               className="bg-red-400 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-500 transition-colors"
             >
               Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {pendingUpdate && (
+      <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-lg p-6 max-w-sm w-full mx-4">
+          <h3 className="text-lg font-semibold text-[#3A3335] mb-2">Save these changes?</h3>
+          <p className="text-sm text-gray-500 mb-5">
+            {pendingUpdate.shopName} — ${pendingUpdate.amount}
+          </p>
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={cancelUpdate}
+              className="border border-gray-200 px-4 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmUpdate}
+              className="bg-[#D88C9A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#C77B8C] transition-colors"
+            >
+              Save
             </button>
           </div>
         </div>
