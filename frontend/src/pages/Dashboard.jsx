@@ -49,6 +49,9 @@ function Dashboard() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [pendingUpdate, setPendingUpdate] = useState(null);
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+
   async function loadExpenses() {
     const data = await getExpenses();
     setExpenses(data);
@@ -210,6 +213,16 @@ function Dashboard() {
   const timeData = getSpendOverTimeData(expenses);
   const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
   const overallBudget = budgetStatus.find((b) => b.scope === 'overall');
+
+  const filteredExpenses = expenses.filter((expense) => {
+    const matchesSearch = expense.shopName
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+
+    const matchesCategory = !filterCategory || expense.category?._id === filterCategory;
+
+    return matchesSearch && matchesCategory;
+  });
 
   if (loading) {
     return (
@@ -494,11 +507,33 @@ function Dashboard() {
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <h2 className="text-lg font-semibold mb-4 text-[#3A3335]">Recent Expenses</h2>
 
-          {expenses.length === 0 ? (
-            <p className="text-sm text-gray-400 py-8 text-center">No expenses yet — add your first one above.</p>
+          <div className="flex flex-col sm:flex-row gap-2 mb-4">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by shop name..."
+              className="border border-gray-200 rounded-lg p-2.5 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
+            />
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
+            >
+              <option value="">All categories</option>
+              {categories.map((cat) => (
+                <option key={cat._id} value={cat._id}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {filteredExpenses.length === 0 ? (
+            <p className="text-sm text-gray-400 py-8 text-center">
+              {expenses.length === 0 ? 'No expenses yet — add your first one above.' : 'No expenses match your search.'}
+            </p>
           ) : (
             <ul className="divide-y divide-gray-100">
-              {expenses.map((expense) => (
+              {filteredExpenses.map((expense) => (
                 <li key={expense._id} className="py-3.5 flex justify-between items-center group">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
