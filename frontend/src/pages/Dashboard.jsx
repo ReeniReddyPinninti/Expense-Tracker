@@ -51,6 +51,7 @@ function Dashboard() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  const [sortBy, setSortBy] = useState('date-desc');
 
   async function loadExpenses() {
     const data = await getExpenses();
@@ -214,14 +215,29 @@ function Dashboard() {
   const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
   const overallBudget = budgetStatus.find((b) => b.scope === 'overall');
 
-  const filteredExpenses = expenses.filter((expense) => {
+  const filteredExpenses = expenses
+  .filter((expense) => {
     const matchesSearch = expense.shopName
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
-
     const matchesCategory = !filterCategory || expense.category?._id === filterCategory;
-
     return matchesSearch && matchesCategory;
+  })
+  .sort((a, b) => {
+    switch (sortBy) {
+      case 'date-desc':
+        return new Date(b.date) - new Date(a.date);
+      case 'date-asc':
+        return new Date(a.date) - new Date(b.date);
+      case 'amount-desc':
+        return b.amount - a.amount;
+      case 'amount-asc':
+        return a.amount - b.amount;
+      case 'shop-asc':
+        return a.shopName.localeCompare(b.shopName);
+      default:
+        return 0;
+    }
   });
 
   if (loading) {
@@ -524,6 +540,17 @@ function Dashboard() {
               {categories.map((cat) => (
                 <option key={cat._id} value={cat._id}>{cat.name}</option>
               ))}
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
+            >
+              <option value="date-desc">Newest first</option>
+              <option value="date-asc">Oldest first</option>
+              <option value="amount-desc">Amount: high to low</option>
+              <option value="amount-asc">Amount: low to high</option>
+              <option value="shop-asc">Shop name: A–Z</option>
             </select>
           </div>
 
