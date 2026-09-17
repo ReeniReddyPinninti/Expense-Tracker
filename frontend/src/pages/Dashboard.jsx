@@ -38,6 +38,7 @@ function Dashboard() {
   const [expenseDate, setExpenseDate] = useState(new Date());
   const [isMixed, setIsMixed] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [notes, setNotes] = useState('');
 
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -90,6 +91,7 @@ function Dashboard() {
     setExpenseDate(new Date());
     setIsMixed(false);
     setEditingId(null);
+    setNotes('');
   }
 
   function handleMixedChange(checked) {
@@ -114,6 +116,7 @@ function Dashboard() {
       category: categoryId || null,
       date: toDateOnlyString(expenseDate),
       isMixed,
+      notes,
     };
 
     if (editingId) {
@@ -157,6 +160,7 @@ function Dashboard() {
     setCategoryId(expense.category?._id || '');
     setExpenseDate(fromDateOnlyString(expense.date));
     setIsMixed(expense.isMixed || false);
+    setNotes(expense.notes || '');
   }
 
   function requestDelete(id) {
@@ -389,6 +393,17 @@ function Dashboard() {
               </label>
             </div>
 
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Notes (optional)</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Any extra details..."
+                rows={2}
+                className="border border-gray-200 rounded-lg w-full p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D88C9A] focus:border-transparent resize-none"
+              />
+            </div>
+
             <div className="flex gap-2 pt-1">
               <button
                 type="submit"
@@ -580,6 +595,9 @@ function Dashboard() {
                         </span>
                       )}
                     </div>
+                    {expense.notes && (
+                      <p className="text-xs text-gray-400 mt-1 italic">{expense.notes}</p>
+                    )}
                     <p className="text-xs text-gray-400 mt-0.5">
                       {fromDateOnlyString(expense.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
