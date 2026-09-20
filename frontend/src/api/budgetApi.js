@@ -19,3 +19,13 @@ export async function deleteBudget(id) {
   const res = await axiosClient.delete(`/budgets/${id}`);
   return res.data;
 }
+
+export async function deleteAllBudgets() {
+  const res = await axiosClient.delete('/budgets/all');
+  return res.data;
+}
+
+export async function deleteBudgetByScope(scope) {
+  const res = await axiosClient.delete(`/budgets/scope/${scope}`);
+  return res.data;
+}

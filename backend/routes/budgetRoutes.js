@@ -61,18 +61,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// DELETE a budget (user removes the limit for a scope)
-router.delete('/:id', async (req, res) => {
-  try {
-    const deleted = await Budget.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ message: 'Budget not found' });
-    res.json({ message: 'Budget deleted' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// DELETE - remove ALL budgets
 router.delete('/all', async (req, res) => {
   try {
     const result = await Budget.deleteMany({});
@@ -82,11 +70,20 @@ router.delete('/all', async (req, res) => {
   }
 });
 
-// DELETE - remove a budget by its scope (category id or 'overall'), not its _id
 router.delete('/scope/:scope', async (req, res) => {
   try {
     const deleted = await Budget.findOneAndDelete({ scope: req.params.scope });
     if (!deleted) return res.status(404).json({ message: 'Budget not found for that scope' });
+    res.json({ message: 'Budget deleted' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete('/:id', async (req, res) => {
+  try {
+    const deleted = await Budget.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: 'Budget not found' });
     res.json({ message: 'Budget deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -4,10 +4,10 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { getCategorySpendData, getSpendOverTimeData } from '../utils/chartHelpers';
 import SpendHeatmap from '../components/SpendHeatmap';
-import { getExpenses, createExpense, updateExpense, deleteExpense } from '../api/expenseApi';
 import { getCategories, createCategory } from '../api/categoryApi';
-import { getBudgetStatus, setBudget } from '../api/budgetApi';
 import Toast from '../components/Toast';
+import { getExpenses, createExpense, updateExpense, deleteExpense, deleteAllExpenses, deleteExpensesByCategory } from '../api/expenseApi';
+import { getBudgetStatus, setBudget, deleteAllBudgets, deleteBudgetByScope } from '../api/budgetApi';
 
 const CATEGORY_COLORS = ['#D88C9A', '#C77B8C', '#E8B4BC', '#B5828C', '#F2D4D7', '#9C6B7A', '#EFC3CB'];
 
@@ -53,6 +53,8 @@ function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [sortBy, setSortBy] = useState('date-desc');
+
+  const [confirmClear, setConfirmClear] = useState(null);
 
   async function loadExpenses() {
     const data = await getExpenses();
@@ -244,6 +246,61 @@ function Dashboard() {
     }
   });
 
+  function requestClearAllExpenses() {
+    setConfirmClear({ type: 'all-expenses', label: 'Delete ALL expenses? This cannot be undone.' });
+  }
+
+  function requestClearCategoryExpenses(categoryId, categoryName) {
+    setConfirmClear({
+      type: 'category-expenses',
+      label: `Delete all expenses in "${categoryName}"? This cannot be undone.`,
+      payload: categoryId,
+    });
+  }
+
+  function requestClearAllBudgets() {
+    setConfirmClear({ type: 'all-budgets', label: 'Delete ALL budgets? This cannot be undone.' });
+  }
+
+  function requestClearBudget(scope, label) {
+    setConfirmClear({ type: 'budget-scope', label: `Remove the budget for "${label}"?`, payload: scope });
+  }
+
+  async function confirmClearAction() {
+    try {
+      switch (confirmClear.type) {
+        case 'all-expenses':
+          await deleteAllExpenses();
+          showToast('All expenses cleared', 'error');
+          await loadExpenses();
+          break;
+        case 'category-expenses':
+          await deleteExpensesByCategory(confirmClear.payload);
+          showToast('Category expenses cleared', 'error');
+          await loadExpenses();
+          break;
+        case 'all-budgets':
+          await deleteAllBudgets();
+          showToast('All budgets cleared', 'error');
+          await loadBudgetStatus();
+          break;
+        case 'budget-scope':
+          await deleteBudgetByScope(confirmClear.payload);
+          showToast('Budget removed', 'error');
+          await loadBudgetStatus();
+          break;
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setConfirmClear(null);
+    }
+  }
+
+  function cancelClear() {
+    setConfirmClear(null);
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-400">
@@ -426,7 +483,17 @@ function Dashboard() {
 
         {/* Budgets */}
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
-          <h2 className="text-lg font-semibold mb-4 text-[#3A3335]">Budgets</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-[#3A3335]">Budgets</h2>
+            {budgetStatus.length > 0 && (
+              <button
+                onClick={requestClearAllBudgets}
+                className="text-xs text-red-400 hover:text-red-500 hover:underline"
+              >
+                Clear All
+              </button>
+            )}
+          </div>
 
           <form onSubmit={handleSetBudget} className="flex flex-wrap gap-2 mb-5">
             <select
@@ -455,33 +522,36 @@ function Dashboard() {
             </button>
           </form>
 
-          {budgetStatus.length === 0 ? (
-            <p className="text-sm text-gray-400">No budgets set yet.</p>
-          ) : (
-            <div className="space-y-4">
-              {budgetStatus.map((b) => (
-                <div key={b.scope}>
-                  <div className="flex justify-between text-sm mb-1.5">
-                    <span className="font-medium text-[#3A3335]">{getCategoryName(b.scope)}</span>
-                    <span className="text-gray-400">${b.spent} / ${b.limit}</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2.5">
-                    <div
-                      className={`h-2.5 rounded-full transition-all duration-500 ${
-                        b.isOverBudget ? 'bg-red-400' : b.percentage > 70 ? 'bg-yellow-400' : 'bg-green-400'
-                      }`}
-                      style={{ width: `${b.percentage}%` }}
-                    />
-                  </div>
-                  {b.isOverBudget && (
-                    <p className="text-xs text-red-400 mt-1">
-                      +${(b.spent - b.limit).toFixed(2)} over budget
-                    </p>
-                  )}
+          {budgetStatus.map((b) => (
+            <div key={b.scope}>
+              <div className="flex justify-between text-sm mb-1.5">
+                <span className="font-medium text-[#3A3335]">{getCategoryName(b.scope)}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400">${b.spent} / ${b.limit}</span>
+                  <button
+                    onClick={() => requestClearBudget(b.scope, getCategoryName(b.scope))}
+                    className="text-xs text-gray-300 hover:text-red-400"
+                    title="Remove this budget"
+                  >
+                    ✕
+                  </button>
                 </div>
-              ))}
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-2.5">
+                <div
+                  className={`h-2.5 rounded-full transition-all duration-500 ${
+                    b.isOverBudget ? 'bg-red-400' : b.percentage > 70 ? 'bg-yellow-400' : 'bg-green-400'
+                  }`}
+                  style={{ width: `${b.percentage}%` }}
+                />
+              </div>
+              {b.isOverBudget && (
+                <p className="text-xs text-red-400 mt-1">
+                  +${(b.spent - b.limit).toFixed(2)} over budget
+                </p>
+              )}
             </div>
-          )}
+          ))}
         </div>
 
         {/* Charts */}
@@ -536,7 +606,17 @@ function Dashboard() {
 
         {/* Expense list */}
         <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold mb-4 text-[#3A3335]">Recent Expenses</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-[#3A3335]">Recent Expenses</h2>
+            {expenses.length > 0 && (
+              <button
+                onClick={requestClearAllExpenses}
+                className="text-xs text-red-400 hover:text-red-500 hover:underline"
+              >
+                Clear All
+              </button>
+            )}
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-2 mb-4">
             <input
@@ -678,6 +758,31 @@ function Dashboard() {
         </div>
       </div>
     )}
+
+    {confirmClear && (
+      <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-lg p-6 max-w-sm w-full mx-4">
+          <h3 className="text-lg font-semibold text-[#3A3335] mb-2">Are you sure?</h3>
+          <p className="text-sm text-gray-500 mb-5">{confirmClear.label}</p>
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={cancelClear}
+              className="border border-gray-200 px-4 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmClearAction}
+              className="bg-red-400 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-500 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+
     </div>
   );
 }

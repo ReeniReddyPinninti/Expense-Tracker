@@ -19,3 +19,13 @@ export async function deleteExpense(id) {
   const res = await axiosClient.delete(`/expenses/${id}`);
   return res.data;
 }
+
+export async function deleteAllExpenses() {
+  const res = await axiosClient.delete('/expenses/all');
+  return res.data;
+}
+
+export async function deleteExpensesByCategory(categoryId) {
+  const res = await axiosClient.delete(`/expenses/category/${categoryId}`);
+  return res.data;
+}
