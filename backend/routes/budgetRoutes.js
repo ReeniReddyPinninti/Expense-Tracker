@@ -72,4 +72,25 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// DELETE - remove ALL budgets
+router.delete('/all', async (req, res) => {
+  try {
+    const result = await Budget.deleteMany({});
+    res.json({ message: `Deleted ${result.deletedCount} budgets` });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// DELETE - remove a budget by its scope (category id or 'overall'), not its _id
+router.delete('/scope/:scope', async (req, res) => {
+  try {
+    const deleted = await Budget.findOneAndDelete({ scope: req.params.scope });
+    if (!deleted) return res.status(404).json({ message: 'Budget not found for that scope' });
+    res.json({ message: 'Budget deleted' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;

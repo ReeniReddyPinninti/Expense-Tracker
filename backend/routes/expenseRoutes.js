@@ -51,6 +51,27 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+
+// DELETE - remove ALL expenses
+router.delete('/all', async (req, res) => {
+  try {
+    const result = await Expense.deleteMany({});
+    res.json({ message: `Deleted ${result.deletedCount} expenses` });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// DELETE - remove all expenses in a specific category
+router.delete('/category/:categoryId', async (req, res) => {
+  try {
+    const result = await Expense.deleteMany({ category: req.params.categoryId });
+    res.json({ message: `Deleted ${result.deletedCount} expenses` });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // DELETE - remove an expense
 router.delete('/:id', async (req, res) => {
   try {
