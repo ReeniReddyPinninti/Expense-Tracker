@@ -7,7 +7,8 @@ import SpendHeatmap from '../components/SpendHeatmap';
 import { getCategories, createCategory } from '../api/categoryApi';
 import Toast from '../components/Toast';
 import { getExpenses, createExpense, updateExpense, deleteExpense, deleteAllExpenses, deleteExpensesByCategory } from '../api/expenseApi';
-import { getBudgetStatus, setBudget, deleteAllBudgets, deleteBudgetByScope } from '../api/budgetApi';
+import { getBudgets, setBudget, deleteAllBudgets, deleteBudgetByScope } from '../api/budgetApi';
+import { getMonthKey, getCurrentMonthKey, getAvailableMonths, formatMonthLabel } from '../utils/monthHelpers';
 
 const CATEGORY_COLORS = ['#D88C9A', '#C77B8C', '#E8B4BC', '#B5828C', '#F2D4D7', '#9C6B7A', '#EFC3CB'];
 
@@ -28,7 +29,8 @@ function fromDateOnlyString(dateStr) {
 function Dashboard() {
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [budgetStatus, setBudgetStatus] = useState([]);
+  const [budgets, setBudgets] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthKey());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -61,9 +63,9 @@ function Dashboard() {
     setExpenses(data);
   }
 
-  async function loadBudgetStatus() {
-    const data = await getBudgetStatus();
-    setBudgetStatus(data);
+  async function loadBudgets() {
+    const data = await getBudgets();
+    setBudgets(data);
   }
 
   useEffect(() => {
@@ -72,11 +74,11 @@ function Dashboard() {
         const [expenseData, categoryData, budgetData] = await Promise.all([
           getExpenses(),
           getCategories(),
-          getBudgetStatus(),
+          getBudgets(),
         ]);
         setExpenses(expenseData);
         setCategories(categoryData);
-        setBudgetStatus(budgetData);
+        setBudgets(budgetData);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -204,7 +206,7 @@ function Dashboard() {
       await setBudget(budgetScope, Number(budgetLimit));
       showToast('Budget updated');
       setBudgetLimit('');
-      await loadBudgetStatus();
+      await loadBudgets();
     } catch (err) {
       setError(err.message);
     }
@@ -216,12 +218,29 @@ function Dashboard() {
     return match ? match.name : 'Unknown category';
   }
 
-  const categoryData = getCategorySpendData(expenses);
-  const timeData = getSpendOverTimeData(expenses);
-  const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const overallBudget = budgetStatus.find((b) => b.scope === 'overall');
+  const monthExpenses = expenses.filter((e) => getMonthKey(e.date) === selectedMonth);
 
-  const filteredExpenses = expenses
+  const categoryData = getCategorySpendData(monthExpenses);
+  const timeData = getSpendOverTimeData(monthExpenses);
+  const totalSpent = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  const budgetStatus = budgets.map((b) => {
+    const spent = monthExpenses
+      .filter((e) => b.scope === 'overall' || e.category?._id === b.scope)
+      .reduce((sum, e) => sum + e.amount, 0);
+    return {
+      scope: b.scope,
+      limit: b.limit,
+      spent,
+      percentage: Math.min((spent / b.limit) * 100, 100),
+      isOverBudget: spent > b.limit,
+    };
+  });
+
+  const overallBudget = budgetStatus.find((b) => b.scope === 'overall');
+  const availableMonths = getAvailableMonths(expenses);
+
+  const filteredExpenses = monthExpenses
   .filter((expense) => {
     const matchesSearch = expense.shopName
       .toLowerCase()
@@ -325,6 +344,17 @@ function Dashboard() {
         <header className="mb-8">
           <h1 className="text-3xl font-semibold text-[#3A3335]">Expense Tracker</h1>
           <p className="text-sm text-gray-400 mt-1">Track spending, set budgets, stay on top of it.</p>
+          <div className="mt-3">
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="border border-gray-200 rounded-lg text-sm p-2 focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
+            >
+              {availableMonths.map((m) => (
+                <option key={m} value={m}>{formatMonthLabel(m)}</option>
+              ))}
+            </select>
+          </div>
         </header>
 
         {/* Summary cards */}
@@ -651,9 +681,11 @@ function Dashboard() {
 
           {filteredExpenses.length === 0 ? (
             <p className="text-sm text-gray-400 py-8 text-center">
-              {expenses.length === 0 ? 'No expenses yet — add your first one above.' : 'No expenses match your search.'}
+              {monthExpenses.length === 0
+                ? `No expenses in ${formatMonthLabel(selectedMonth)} yet.`
+                : 'No expenses match your search.'}
             </p>
-          ) : (
+          ) :(
             <ul className="divide-y divide-gray-100">
               {filteredExpenses.map((expense) => (
                 <li key={expense._id} className="py-3.5 flex justify-between items-center group">
