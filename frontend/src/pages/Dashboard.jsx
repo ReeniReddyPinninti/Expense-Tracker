@@ -8,7 +8,7 @@ import { getCategories, createCategory } from '../api/categoryApi';
 import Toast from '../components/Toast';
 import { getExpenses, createExpense, updateExpense, deleteExpense, deleteAllExpenses, deleteExpensesByCategory } from '../api/expenseApi';
 import { getBudgets, setBudget, deleteAllBudgets, deleteBudgetByScope } from '../api/budgetApi';
-import { getMonthKey, getCurrentMonthKey, getAvailableMonths, formatMonthLabel } from '../utils/monthHelpers';
+import { getMonthKey, getCurrentMonthKey, getAvailableMonths, formatMonthLabel, isToday, isThisWeek } from '../utils/monthHelpers';
 
 const CATEGORY_COLORS = ['#D88C9A', '#C77B8C', '#E8B4BC', '#B5828C', '#F2D4D7', '#9C6B7A', '#EFC3CB'];
 
@@ -264,6 +264,10 @@ function Dashboard() {
         return 0;
     }
   });
+  const todayExpenses = expenses.filter((e) => isToday(e.date));
+  const weekExpenses = expenses.filter((e) => isThisWeek(e.date));
+  const todaySpent = todayExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const weekSpent = weekExpenses.reduce((sum, e) => sum + e.amount, 0);
 
   function requestClearAllExpenses() {
     setConfirmClear({ type: 'all-expenses', label: 'Delete ALL expenses? This cannot be undone.' });
@@ -358,9 +362,17 @@ function Dashboard() {
         </header>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
           <div className="bg-white rounded-2xl shadow-sm p-5">
-            <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Total Spent</p>
+            <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Today</p>
+            <p className="text-2xl font-semibold text-[#3A3335]">${todaySpent.toFixed(2)}</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm p-5">
+            <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">This Week</p>
+            <p className="text-2xl font-semibold text-[#3A3335]">${weekSpent.toFixed(2)}</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm p-5">
+            <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">{formatMonthLabel(selectedMonth)}</p>
             <p className="text-2xl font-semibold text-[#3A3335]">${totalSpent.toFixed(2)}</p>
           </div>
           <div className="bg-white rounded-2xl shadow-sm p-5">
@@ -371,7 +383,7 @@ function Dashboard() {
           </div>
           <div className="bg-white rounded-2xl shadow-sm p-5">
             <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Expenses Logged</p>
-            <p className="text-2xl font-semibold text-[#3A3335]">{expenses.length}</p>
+            <p className="text-2xl font-semibold text-[#3A3335]">{monthExpenses.length}</p>
           </div>
         </div>
 
