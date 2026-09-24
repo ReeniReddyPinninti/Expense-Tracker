@@ -8,7 +8,7 @@ import { getCategories, createCategory } from '../api/categoryApi';
 import Toast from '../components/Toast';
 import { getExpenses, createExpense, updateExpense, deleteExpense, deleteAllExpenses, deleteExpensesByCategory } from '../api/expenseApi';
 import { getBudgets, setBudget, deleteAllBudgets, deleteBudgetByScope } from '../api/budgetApi';
-import { getMonthKey, getCurrentMonthKey, getAvailableMonths, formatMonthLabel, isToday, isThisWeek } from '../utils/monthHelpers';
+import { getMonthKey, getCurrentMonthKey, getAvailableMonths, formatMonthLabel, isToday, isThisWeek, getAlertedThresholds, saveAlertedThreshold } from '../utils/monthHelpers';
 import { getRecurringItems, createRecurringItem, deleteRecurringItem } from '../api/recurringApi';
 
 const CATEGORY_COLORS = ['#D88C9A', '#C77B8C', '#E8B4BC', '#B5828C', '#F2D4D7', '#9C6B7A', '#EFC3CB'];
@@ -291,6 +291,31 @@ function Dashboard() {
 
   const overallBudget = budgetStatus.find((b) => b.scope === 'overall');
   const availableMonths = getAvailableMonths(expenses);
+
+  useEffect(() => {
+    if (budgetStatus.length === 0) return;
+
+    const alerted = getAlertedThresholds(selectedMonth);
+    const thresholds = [100, 90, 75]; // check highest first, so we don't double-alert 75 then 90 in one pass
+
+    budgetStatus.forEach((b) => {
+      const actualPercentage = (b.spent / b.limit) * 100; // uncapped, unlike the display percentage
+      const alreadyAlertedAt = alerted[b.scope] || 0;
+
+      for (const threshold of thresholds) {
+        if (actualPercentage >= threshold && alreadyAlertedAt < threshold) {
+          const label = getCategoryName(b.scope);
+          if (threshold >= 100) {
+            showToast(`${label} budget exceeded — $${b.spent.toFixed(2)} of $${b.limit}`, 'error');
+          } else {
+            showToast(`${label} budget at ${threshold}% ($${b.spent.toFixed(2)} of $${b.limit})`);
+          }
+          saveAlertedThreshold(selectedMonth, b.scope, threshold);
+          break; // only fire the highest newly-crossed threshold per budget per check
+        }
+      }
+    });
+  }, [budgetStatus, selectedMonth]);
 
   const filteredExpenses = monthExpenses
   .filter((expense) => {

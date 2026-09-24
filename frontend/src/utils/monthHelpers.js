@@ -41,3 +41,22 @@ export function isThisWeek(dateStr) {
 
   return expenseDate >= startOfWeek && expenseDate <= endOfWeek;
 }
+
+export function getAlertedThresholds(monthKey) {
+  try {
+    const raw = localStorage.getItem(`budgetAlerts-${monthKey}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveAlertedThreshold(monthKey, scope, threshold) {
+  try {
+    const current = getAlertedThresholds(monthKey);
+    current[scope] = threshold;
+    localStorage.setItem(`budgetAlerts-${monthKey}`, JSON.stringify(current));
+  } catch {
+    // localStorage can throw in private browsing / disabled storage — fail silently, alerts just won't persist
+  }
+}
