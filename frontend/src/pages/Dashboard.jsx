@@ -9,6 +9,7 @@ import Toast from '../components/Toast';
 import { getExpenses, createExpense, updateExpense, deleteExpense, deleteAllExpenses, deleteExpensesByCategory } from '../api/expenseApi';
 import { getBudgets, setBudget, deleteAllBudgets, deleteBudgetByScope } from '../api/budgetApi';
 import { getMonthKey, getCurrentMonthKey, getAvailableMonths, formatMonthLabel, isToday, isThisWeek } from '../utils/monthHelpers';
+import { getRecurringItems, createRecurringItem, deleteRecurringItem } from '../api/recurringApi';
 
 const CATEGORY_COLORS = ['#D88C9A', '#C77B8C', '#E8B4BC', '#B5828C', '#F2D4D7', '#9C6B7A', '#EFC3CB'];
 
@@ -56,6 +57,12 @@ function Dashboard() {
   const [filterCategory, setFilterCategory] = useState('');
   const [sortBy, setSortBy] = useState('date-desc');
 
+  const [recurringItems, setRecurringItems] = useState([]);
+  const [showAddRecurring, setShowAddRecurring] = useState(false);
+  const [newRecurringName, setNewRecurringName] = useState('');
+  const [newRecurringAmount, setNewRecurringAmount] = useState('');
+  const [newRecurringCategoryId, setNewRecurringCategoryId] = useState('');
+
   const [confirmClear, setConfirmClear] = useState(null);
 
   async function loadExpenses() {
@@ -71,14 +78,16 @@ function Dashboard() {
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const [expenseData, categoryData, budgetData] = await Promise.all([
+        const [expenseData, categoryData, budgetData, recurringData] = await Promise.all([
           getExpenses(),
           getCategories(),
           getBudgets(),
+          getRecurringItems(),
         ]);
         setExpenses(expenseData);
         setCategories(categoryData);
         setBudgets(budgetData);
+        setRecurringItems(recurringData);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -216,6 +225,49 @@ function Dashboard() {
     if (scope === 'overall') return 'Overall';
     const match = categories.find((cat) => cat._id === scope);
     return match ? match.name : 'Unknown category';
+  }
+
+  function isLoggedThisMonth(item) {
+    return monthExpenses.some(
+      (e) => e.shopName.trim().toLowerCase() === item.name.trim().toLowerCase()
+    );
+  }
+
+  function quickLogRecurring(item) {
+    setShopName(item.name);
+    setAmount(item.amount);
+    setCategoryId(item.category?._id || '');
+    setExpenseDate(new Date());
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function handleAddRecurring(e) {
+    e.preventDefault();
+    try {
+      const newItem = await createRecurringItem({
+        name: newRecurringName,
+        amount: Number(newRecurringAmount),
+        category: newRecurringCategoryId || null,
+      });
+      setRecurringItems((prev) => [...prev, newItem]);
+      setNewRecurringName('');
+      setNewRecurringAmount('');
+      setNewRecurringCategoryId('');
+      setShowAddRecurring(false);
+      showToast('Recurring item added');
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleDeleteRecurring(id) {
+    try {
+      await deleteRecurringItem(id);
+      setRecurringItems((prev) => prev.filter((item) => item._id !== id));
+      showToast('Recurring item removed', 'error');
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   const monthExpenses = expenses.filter((e) => getMonthKey(e.date) === selectedMonth);
@@ -594,6 +646,93 @@ function Dashboard() {
               )}
             </div>
           ))}
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-[#3A3335]">Recurring</h2>
+            <button
+              onClick={() => setShowAddRecurring(!showAddRecurring)}
+              className="text-xs text-[#D88C9A] hover:underline"
+            >
+              {showAddRecurring ? 'Cancel' : '+ Add recurring item'}
+            </button>
+          </div>
+
+          {showAddRecurring && (
+            <form onSubmit={handleAddRecurring} className="flex flex-wrap gap-2 mb-5">
+              <input
+                type="text"
+                value={newRecurringName}
+                onChange={(e) => setNewRecurringName(e.target.value)}
+                placeholder="Rent, Netflix, etc."
+                required
+                className="border border-gray-200 rounded-lg p-2.5 text-sm flex-1 min-w-[140px] focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
+              />
+              <input
+                type="number"
+                value={newRecurringAmount}
+                onChange={(e) => setNewRecurringAmount(e.target.value)}
+                placeholder="Amount"
+                required
+                className="border border-gray-200 rounded-lg p-2.5 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
+              />
+              <select
+                value={newRecurringCategoryId}
+                onChange={(e) => setNewRecurringCategoryId(e.target.value)}
+                className="border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
+              >
+                <option value="">No category</option>
+                {categories.map((cat) => (
+                  <option key={cat._id} value={cat._id}>{cat.name}</option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="bg-[#D88C9A] text-white px-4 rounded-lg text-sm font-medium hover:bg-[#C77B8C] transition-colors"
+              >
+                Save
+              </button>
+            </form>
+          )}
+
+          {recurringItems.length === 0 ? (
+            <p className="text-sm text-gray-400">No recurring items yet — add rent, subscriptions, anything monthly.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {recurringItems.map((item) => {
+                const logged = isLoggedThisMonth(item);
+                return (
+                  <li key={item._id} className="py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={logged ? 'text-gray-400 line-through' : 'text-[#3A3335] font-medium'}>
+                        {item.name}
+                      </span>
+                      <span className="text-sm text-gray-400">${item.amount}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {logged ? (
+                        <span className="text-xs text-green-500">Logged ✓</span>
+                      ) : (
+                        <button
+                          onClick={() => quickLogRecurring(item)}
+                          className="text-xs text-[#D88C9A] hover:underline"
+                        >
+                          Log now
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteRecurring(item._id)}
+                        className="text-xs text-gray-300 hover:text-red-400"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
 
         {/* Charts */}

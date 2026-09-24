@@ -5,6 +5,7 @@ const connectDB = require('./config/db');
 const expenseRoutes = require('./routes/expenseRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const budgetRoutes = require('./routes/budgetRoutes');
+const recurringRoutes = require('./routes/recurringRoutes');
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.use(express.json()); // lets Express parse JSON request bodies
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/budgets', budgetRoutes);
+app.use('/api/recurring', recurringRoutes);
 
 app.get('/', (req, res) => {
   res.send('Expense Tracker API is running');
