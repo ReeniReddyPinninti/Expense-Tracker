@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
 import { PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { getCategorySpendData, getSpendOverTimeData } from '../utils/chartHelpers';
 import SpendHeatmap from '../components/SpendHeatmap';
@@ -10,6 +8,12 @@ import { getExpenses, createExpense, updateExpense, deleteExpense, deleteAllExpe
 import { getBudgets, setBudget, deleteAllBudgets, deleteBudgetByScope } from '../api/budgetApi';
 import { getMonthKey, getCurrentMonthKey, getAvailableMonths, formatMonthLabel, isToday, isThisWeek, getAlertedThresholds, saveAlertedThreshold } from '../utils/monthHelpers';
 import { getRecurringItems, createRecurringItem, deleteRecurringItem } from '../api/recurringApi';
+import ConfirmModal from '../components/ConfirmModal';
+import SummaryCards from '../components/SummaryCards';
+import ExpenseForm from '../components/ExpenseForm';
+import ExpenseList from '../components/ExpenseList';
+import BudgetPanel from '../components/BudgetPanel';
+import RecurringPanel from '../components/RecurringPanel';
 
 const CATEGORY_COLORS = ['#D88C9A', '#C77B8C', '#E8B4BC', '#B5828C', '#F2D4D7', '#9C6B7A', '#EFC3CB'];
 
@@ -439,326 +443,57 @@ function Dashboard() {
         </header>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
-          <div className="bg-white rounded-2xl shadow-sm p-5">
-            <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Today</p>
-            <p className="text-2xl font-semibold text-[#3A3335]">${todaySpent.toFixed(2)}</p>
-          </div>
-          <div className="bg-white rounded-2xl shadow-sm p-5">
-            <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">This Week</p>
-            <p className="text-2xl font-semibold text-[#3A3335]">${weekSpent.toFixed(2)}</p>
-          </div>
-          <div className="bg-white rounded-2xl shadow-sm p-5">
-            <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">{formatMonthLabel(selectedMonth)}</p>
-            <p className="text-2xl font-semibold text-[#3A3335]">${totalSpent.toFixed(2)}</p>
-          </div>
-          <div className="bg-white rounded-2xl shadow-sm p-5">
-            <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Overall Budget</p>
-            <p className="text-2xl font-semibold text-[#3A3335]">
-              {overallBudget ? `$${overallBudget.limit}` : '— not set'}
-            </p>
-          </div>
-          <div className="bg-white rounded-2xl shadow-sm p-5">
-            <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Expenses Logged</p>
-            <p className="text-2xl font-semibold text-[#3A3335]">{monthExpenses.length}</p>
-          </div>
-        </div>
+        <SummaryCards
+          todaySpent={todaySpent}
+          weekSpent={weekSpent}
+          totalSpent={totalSpent}
+          monthLabel={formatMonthLabel(selectedMonth)}
+          overallBudget={overallBudget}
+          expenseCount={monthExpenses.length}
+        />
 
         {/* Add / Edit expense form */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
-          <h2 className="text-lg font-semibold mb-4 text-[#3A3335]">
-            {editingId ? 'Edit Expense' : 'Add an Expense'}
-          </h2>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Amount</label>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  required
-                  placeholder="0.00"
-                  className="border border-gray-200 rounded-lg w-full p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D88C9A] focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Shop Name</label>
-                <input
-                  type="text"
-                  value={shopName}
-                  onChange={(e) => setShopName(e.target.value)}
-                  required
-                  placeholder="Target, Rent, etc."
-                  className="border border-gray-200 rounded-lg w-full p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D88C9A] focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Date</label>
-                <DatePicker
-                  selected={expenseDate}
-                  onChange={(date) => setExpenseDate(date)}
-                  dateFormat="MMMM d, yyyy"
-                  maxDate={new Date()}
-                  className="border border-gray-200 rounded-lg w-full p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D88C9A] focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Category (optional)</label>
-                {!isCreatingCategory ? (
-                  <select
-                    value={categoryId}
-                    onChange={(e) => {
-                      if (e.target.value === '__create_new__') {
-                        setIsCreatingCategory(true);
-                      } else {
-                        setCategoryId(e.target.value);
-                      }
-                    }}
-                    className="border border-gray-200 rounded-lg w-full p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D88C9A] focus:border-transparent"
-                  >
-                    <option value="">None (Miscellaneous)</option>
-                    {categories.map((cat) => (
-                      <option key={cat._id} value={cat._id}>{cat.name}</option>
-                    ))}
-                    <option value="__create_new__">+ Create new category</option>
-                  </select>
-                ) : (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
-                      placeholder="New category name"
-                      autoFocus
-                      className="border border-gray-200 rounded-lg w-full p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleCreateCategory}
-                      className="bg-[#D88C9A] text-white px-3 rounded-lg text-sm hover:bg-[#C77B8C] transition-colors"
-                    >
-                      Add
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsCreatingCategory(false)}
-                      className="border border-gray-200 px-3 rounded-lg text-sm text-gray-500 hover:bg-gray-50 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isMixed"
-                checked={isMixed}
-                onChange={(e) => handleMixedChange(e.target.checked)}
-                className="h-4 w-4 accent-[#D88C9A]"
-              />
-              <label htmlFor="isMixed" className="text-sm text-gray-500">
-                This covers a mix of different products
-              </label>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Notes (optional)</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Any extra details..."
-                rows={2}
-                className="border border-gray-200 rounded-lg w-full p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D88C9A] focus:border-transparent resize-none"
-              />
-            </div>
-
-            <div className="flex gap-2 pt-1">
-              <button
-                type="submit"
-                className="bg-[#D88C9A] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#C77B8C] transition-colors"
-              >
-                {editingId ? 'Update Expense' : 'Add Expense'}
-              </button>
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="border border-gray-200 px-5 py-2.5 rounded-lg text-sm text-gray-500 hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          </form>
-        </div>
+        <ExpenseForm
+          amount={amount} setAmount={setAmount}
+          shopName={shopName} setShopName={setShopName}
+          expenseDate={expenseDate} setExpenseDate={setExpenseDate}
+          categoryId={categoryId} setCategoryId={setCategoryId}
+          categories={categories}
+          isCreatingCategory={isCreatingCategory} setIsCreatingCategory={setIsCreatingCategory}
+          newCategoryName={newCategoryName} setNewCategoryName={setNewCategoryName}
+          handleCreateCategory={handleCreateCategory}
+          isMixed={isMixed} handleMixedChange={handleMixedChange}
+          notes={notes} setNotes={setNotes}
+          editingId={editingId}
+          handleSubmit={handleSubmit}
+          resetForm={resetForm}
+        />
 
         {/* Budgets */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#3A3335]">Budgets</h2>
-            {budgetStatus.length > 0 && (
-              <button
-                onClick={requestClearAllBudgets}
-                className="text-xs text-red-400 hover:text-red-500 hover:underline"
-              >
-                Clear All
-              </button>
-            )}
-          </div>
+        <BudgetPanel
+          budgetScope={budgetScope} setBudgetScope={setBudgetScope}
+          budgetLimit={budgetLimit} setBudgetLimit={setBudgetLimit}
+          categories={categories}
+          handleSetBudget={handleSetBudget}
+          budgetStatus={budgetStatus}
+          getCategoryName={getCategoryName}
+          requestClearAllBudgets={requestClearAllBudgets}
+          requestClearBudget={requestClearBudget}
+        />
 
-          <form onSubmit={handleSetBudget} className="flex flex-wrap gap-2 mb-5">
-            <select
-              value={budgetScope}
-              onChange={(e) => setBudgetScope(e.target.value)}
-              className="border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
-            >
-              <option value="overall">Overall</option>
-              {categories.map((cat) => (
-                <option key={cat._id} value={cat._id}>{cat.name}</option>
-              ))}
-            </select>
-            <input
-              type="number"
-              value={budgetLimit}
-              onChange={(e) => setBudgetLimit(e.target.value)}
-              placeholder="Limit"
-              required
-              className="border border-gray-200 rounded-lg p-2.5 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
-            />
-            <button
-              type="submit"
-              className="bg-[#D88C9A] text-white px-4 rounded-lg text-sm font-medium hover:bg-[#C77B8C] transition-colors"
-            >
-              Save Budget
-            </button>
-          </form>
-
-          {budgetStatus.map((b) => (
-            <div key={b.scope}>
-              <div className="flex justify-between text-sm mb-1.5">
-                <span className="font-medium text-[#3A3335]">{getCategoryName(b.scope)}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-400">${b.spent} / ${b.limit}</span>
-                  <button
-                    onClick={() => requestClearBudget(b.scope, getCategoryName(b.scope))}
-                    className="text-xs text-gray-300 hover:text-red-400"
-                    title="Remove this budget"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-              <div className="w-full bg-gray-100 rounded-full h-2.5">
-                <div
-                  className={`h-2.5 rounded-full transition-all duration-500 ${
-                    b.isOverBudget ? 'bg-red-400' : b.percentage > 70 ? 'bg-yellow-400' : 'bg-green-400'
-                  }`}
-                  style={{ width: `${b.percentage}%` }}
-                />
-              </div>
-              {b.isOverBudget && (
-                <p className="text-xs text-red-400 mt-1">
-                  +${(b.spent - b.limit).toFixed(2)} over budget
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#3A3335]">Recurring</h2>
-            <button
-              onClick={() => setShowAddRecurring(!showAddRecurring)}
-              className="text-xs text-[#D88C9A] hover:underline"
-            >
-              {showAddRecurring ? 'Cancel' : '+ Add recurring item'}
-            </button>
-          </div>
-
-          {showAddRecurring && (
-            <form onSubmit={handleAddRecurring} className="flex flex-wrap gap-2 mb-5">
-              <input
-                type="text"
-                value={newRecurringName}
-                onChange={(e) => setNewRecurringName(e.target.value)}
-                placeholder="Rent, Netflix, etc."
-                required
-                className="border border-gray-200 rounded-lg p-2.5 text-sm flex-1 min-w-[140px] focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
-              />
-              <input
-                type="number"
-                value={newRecurringAmount}
-                onChange={(e) => setNewRecurringAmount(e.target.value)}
-                placeholder="Amount"
-                required
-                className="border border-gray-200 rounded-lg p-2.5 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
-              />
-              <select
-                value={newRecurringCategoryId}
-                onChange={(e) => setNewRecurringCategoryId(e.target.value)}
-                className="border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
-              >
-                <option value="">No category</option>
-                {categories.map((cat) => (
-                  <option key={cat._id} value={cat._id}>{cat.name}</option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                className="bg-[#D88C9A] text-white px-4 rounded-lg text-sm font-medium hover:bg-[#C77B8C] transition-colors"
-              >
-                Save
-              </button>
-            </form>
-          )}
-
-          {recurringItems.length === 0 ? (
-            <p className="text-sm text-gray-400">No recurring items yet — add rent, subscriptions, anything monthly.</p>
-          ) : (
-            <ul className="divide-y divide-gray-100">
-              {recurringItems.map((item) => {
-                const logged = isLoggedThisMonth(item);
-                return (
-                  <li key={item._id} className="py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={logged ? 'text-gray-400 line-through' : 'text-[#3A3335] font-medium'}>
-                        {item.name}
-                      </span>
-                      <span className="text-sm text-gray-400">${item.amount}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {logged ? (
-                        <span className="text-xs text-green-500">Logged ✓</span>
-                      ) : (
-                        <button
-                          onClick={() => quickLogRecurring(item)}
-                          className="text-xs text-[#D88C9A] hover:underline"
-                        >
-                          Log now
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDeleteRecurring(item._id)}
-                        className="text-xs text-gray-300 hover:text-red-400"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+        {/* Recurring items */}
+        <RecurringPanel
+          recurringItems={recurringItems}
+          showAddRecurring={showAddRecurring} setShowAddRecurring={setShowAddRecurring}
+          newRecurringName={newRecurringName} setNewRecurringName={setNewRecurringName}
+          newRecurringAmount={newRecurringAmount} setNewRecurringAmount={setNewRecurringAmount}
+          newRecurringCategoryId={newRecurringCategoryId} setNewRecurringCategoryId={setNewRecurringCategoryId}
+          categories={categories}
+          handleAddRecurring={handleAddRecurring}
+          isLoggedThisMonth={isLoggedThisMonth}
+          quickLogRecurring={quickLogRecurring}
+          handleDeleteRecurring={handleDeleteRecurring}
+        />
 
         {/* Charts */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -811,105 +546,19 @@ function Dashboard() {
         </div>
 
         {/* Expense list */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#3A3335]">Recent Expenses</h2>
-            {expenses.length > 0 && (
-              <button
-                onClick={requestClearAllExpenses}
-                className="text-xs text-red-400 hover:text-red-500 hover:underline"
-              >
-                Clear All
-              </button>
-            )}
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-2 mb-4">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by shop name..."
-              className="border border-gray-200 rounded-lg p-2.5 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
-            />
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
-            >
-              <option value="">All categories</option>
-              {categories.map((cat) => (
-                <option key={cat._id} value={cat._id}>{cat.name}</option>
-              ))}
-            </select>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
-            >
-              <option value="date-desc">Newest first</option>
-              <option value="date-asc">Oldest first</option>
-              <option value="amount-desc">Amount: high to low</option>
-              <option value="amount-asc">Amount: low to high</option>
-              <option value="shop-asc">Shop name: A–Z</option>
-            </select>
-          </div>
-
-          {filteredExpenses.length === 0 ? (
-            <p className="text-sm text-gray-400 py-8 text-center">
-              {monthExpenses.length === 0
-                ? `No expenses in ${formatMonthLabel(selectedMonth)} yet.`
-                : 'No expenses match your search.'}
-            </p>
-          ) :(
-            <ul className="divide-y divide-gray-100">
-              {filteredExpenses.map((expense) => (
-                <li key={expense._id} className="py-3.5 flex justify-between items-center group">
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-[#3A3335]">{expense.shopName}</span>
-                      <span className="text-[#3A3335]">${expense.amount}</span>
-                      {expense.category && (
-                        <span
-                          className="text-xs px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: '#F2D4D7', color: '#9C6B7A' }}
-                        >
-                          {expense.category.name}
-                        </span>
-                      )}
-                      {expense.isMixed && (
-                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                          Mixed
-                        </span>
-                      )}
-                    </div>
-                    {expense.notes && (
-                      <p className="text-xs text-gray-400 mt-1 italic">{expense.notes}</p>
-                    )}
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {fromDateOnlyString(expense.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => startEditing(expense)}
-                      className="text-xs text-gray-400 hover:text-[#D88C9A] transition-colors"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => requestDelete(expense._id)}
-                      className="text-xs text-gray-400 hover:text-red-400 transition-colors"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <ExpenseList
+          filteredExpenses={filteredExpenses}
+          hasAnyExpenses={monthExpenses.length > 0}
+          categories={categories}
+          searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+          filterCategory={filterCategory} setFilterCategory={setFilterCategory}
+          sortBy={sortBy} setSortBy={setSortBy}
+          startEditing={startEditing}
+          requestDelete={requestDelete}
+          requestClearAllExpenses={requestClearAllExpenses}
+          fromDateOnlyString={fromDateOnlyString}
+          monthLabel={formatMonthLabel(selectedMonth)}
+        />
 
       </div>
       {toast && (
@@ -919,77 +568,35 @@ function Dashboard() {
         onClose={() => setToast(null)}
       />
     )}
+    
     {confirmDeleteId && (
-      <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl shadow-lg p-6 max-w-sm w-full mx-4">
-          <h3 className="text-lg font-semibold text-[#3A3335] mb-2">Delete this expense?</h3>
-          <p className="text-sm text-gray-500 mb-5">This can't be undone.</p>
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={cancelDelete}
-              className="border border-gray-200 px-4 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={confirmDelete}
-              className="bg-red-400 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-500 transition-colors"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
+      <ConfirmModal
+        title="Delete this expense?"
+        message="This can't be undone."
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
     )}
 
     {pendingUpdate && (
-      <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl shadow-lg p-6 max-w-sm w-full mx-4">
-          <h3 className="text-lg font-semibold text-[#3A3335] mb-2">Save these changes?</h3>
-          <p className="text-sm text-gray-500 mb-5">
-            {pendingUpdate.shopName} — ${pendingUpdate.amount}
-          </p>
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={cancelUpdate}
-              className="border border-gray-200 px-4 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={confirmUpdate}
-              className="bg-[#D88C9A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#C77B8C] transition-colors"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      </div>
+      <ConfirmModal
+        title="Save these changes?"
+        message={`${pendingUpdate.shopName} — $${pendingUpdate.amount}`}
+        confirmLabel="Save"
+        confirmColor="pink"
+        onConfirm={confirmUpdate}
+        onCancel={cancelUpdate}
+      />
     )}
 
     {confirmClear && (
-      <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl shadow-lg p-6 max-w-sm w-full mx-4">
-          <h3 className="text-lg font-semibold text-[#3A3335] mb-2">Are you sure?</h3>
-          <p className="text-sm text-gray-500 mb-5">{confirmClear.label}</p>
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={cancelClear}
-              className="border border-gray-200 px-4 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={confirmClearAction}
-              className="bg-red-400 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-500 transition-colors"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
+      <ConfirmModal
+        title="Are you sure?"
+        message={confirmClear.label}
+        onConfirm={confirmClearAction}
+        onCancel={cancelClear}
+      />
     )}
-
 
     </div>
   );
