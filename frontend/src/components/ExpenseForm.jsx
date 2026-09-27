@@ -27,6 +27,7 @@ function ExpenseForm({
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Amount</label>
             <input
+              id="amount-input"
               type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}

@@ -101,6 +101,19 @@ function Dashboard() {
     loadInitialData();
   }, []);
 
+  useEffect(() => {
+    function handleKeyDown(e) {
+      const tag = document.activeElement.tagName;
+      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      if (e.key === 'a' && !isTyping) {
+        e.preventDefault();
+        quickAdd();
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editingId]);
+
   function resetForm() {
     setAmount('');
     setShopName('');
@@ -197,6 +210,14 @@ function Dashboard() {
 
   function cancelDelete() {
     setConfirmDeleteId(null);
+  }
+
+  function quickAdd() {
+    if (editingId) resetForm(); // don't jump into the form mid-edit of something else
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      document.getElementById('amount-input')?.focus();
+    }, 400); // wait for the smooth scroll to roughly finish before focusing
   }
 
   async function handleCreateCategory() {
@@ -597,6 +618,14 @@ function Dashboard() {
         onCancel={cancelClear}
       />
     )}
+
+    <button
+      onClick={quickAdd}
+      title="Quick add (press 'a')"
+      className="fixed bottom-6 right-6 z-40 bg-[#D88C9A] hover:bg-[#C77B8C] text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-2xl transition-colors"
+    >
+      +
+    </button>
 
     </div>
   );
