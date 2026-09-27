@@ -35,7 +35,6 @@ function Dashboard() {
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [budgets, setBudgets] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthKey());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -58,8 +57,6 @@ function Dashboard() {
   const [pendingUpdate, setPendingUpdate] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
-  const [sortBy, setSortBy] = useState('date-desc');
 
   const [recurringItems, setRecurringItems] = useState([]);
   const [showAddRecurring, setShowAddRecurring] = useState(false);
@@ -68,6 +65,30 @@ function Dashboard() {
   const [newRecurringCategoryId, setNewRecurringCategoryId] = useState('');
 
   const [confirmClear, setConfirmClear] = useState(null);
+
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    try {
+      return localStorage.getItem('expenseTracker.selectedMonth') || getCurrentMonthKey();
+    } catch {
+      return getCurrentMonthKey();
+    }
+  });
+
+  const [filterCategory, setFilterCategory] = useState(() => {
+    try {
+      return localStorage.getItem('expenseTracker.filterCategory') || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const [sortBy, setSortBy] = useState(() => {
+    try {
+      return localStorage.getItem('expenseTracker.sortBy') || 'date-desc';
+    } catch {
+      return 'date-desc';
+    }
+  });
 
   async function loadExpenses() {
     const data = await getExpenses();
@@ -113,6 +134,16 @@ function Dashboard() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [editingId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('expenseTracker.selectedMonth', selectedMonth);
+      localStorage.setItem('expenseTracker.filterCategory', filterCategory);
+      localStorage.setItem('expenseTracker.sortBy', sortBy);
+    } catch {
+      // storage unavailable — nothing to do, preferences just won't persist this session
+    }
+  }, [selectedMonth, filterCategory, sortBy]);
 
   function resetForm() {
     setAmount('');
