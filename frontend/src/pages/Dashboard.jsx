@@ -348,6 +348,20 @@ function Dashboard() {
   const overallBudget = budgetStatus.find((b) => b.scope === 'overall');
   const availableMonths = getAvailableMonths(expenses);
 
+  const miscCategory = categories.find((cat) => cat.name === 'Miscellaneous');
+  const miscExpenses = monthExpenses.filter(
+    (e) => !e.category || e.category.name === 'Miscellaneous'
+  );
+  const miscPercentage = monthExpenses.length > 0
+    ? (miscExpenses.length / monthExpenses.length) * 100
+    : 0;
+  const showMiscNudge = miscExpenses.length >= 3 && miscPercentage >= 20;
+
+  function reviewMiscellaneous() {
+    setFilterCategory(miscCategory?._id || '');
+    document.getElementById('expense-list-section')?.scrollIntoView({ behavior: 'smooth' });
+  }
+
   useEffect(() => {
     if (budgetStatus.length === 0) return;
 
@@ -504,6 +518,20 @@ function Dashboard() {
           expenseCount={monthExpenses.length}
         />
 
+        {showMiscNudge && (
+          <div className="bg-[#FDF2F4] border border-[#F2D4D7] rounded-2xl p-4 mb-8 flex items-center justify-between">
+            <p className="text-sm text-[#9C6B7A]">
+              {miscExpenses.length} expenses ({Math.round(miscPercentage)}%) this month are in Miscellaneous — worth a quick look?
+            </p>
+            <button
+              onClick={reviewMiscellaneous}
+              className="text-sm font-medium text-[#D88C9A] hover:underline whitespace-nowrap ml-4"
+            >
+              Review now
+            </button>
+          </div>
+        )}
+
         {/* Add / Edit expense form */}
         <ExpenseForm
           amount={amount} setAmount={setAmount}
@@ -598,19 +626,21 @@ function Dashboard() {
         </div>
 
         {/* Expense list */}
-        <ExpenseList
-          filteredExpenses={filteredExpenses}
-          hasAnyExpenses={monthExpenses.length > 0}
-          categories={categories}
-          searchTerm={searchTerm} setSearchTerm={setSearchTerm}
-          filterCategory={filterCategory} setFilterCategory={setFilterCategory}
-          sortBy={sortBy} setSortBy={setSortBy}
-          startEditing={startEditing}
-          requestDelete={requestDelete}
-          requestClearAllExpenses={requestClearAllExpenses}
-          fromDateOnlyString={fromDateOnlyString}
-          monthLabel={formatMonthLabel(selectedMonth)}
-        />
+        <div id="expense-list-section">
+          <ExpenseList
+            filteredExpenses={filteredExpenses}
+            hasAnyExpenses={monthExpenses.length > 0}
+            categories={categories}
+            searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+            filterCategory={filterCategory} setFilterCategory={setFilterCategory}
+            sortBy={sortBy} setSortBy={setSortBy}
+            startEditing={startEditing}
+            requestDelete={requestDelete}
+            requestClearAllExpenses={requestClearAllExpenses}
+            fromDateOnlyString={fromDateOnlyString}
+            monthLabel={formatMonthLabel(selectedMonth)}
+          />
+        </div>
 
       </div>
       {toast && (
