@@ -392,7 +392,13 @@ function Dashboard() {
     const matchesSearch = expense.shopName
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
-    const matchesCategory = !filterCategory || expense.category?._id === filterCategory;
+
+    const miscellaneousId = categories.find((c) => c.name === 'Miscellaneous')?._id;
+    const matchesCategory =
+      !filterCategory ||
+      expense.category?._id === filterCategory ||
+      (!expense.category && filterCategory === miscellaneousId);
+
     return matchesSearch && matchesCategory;
   })
   .sort((a, b) => {
