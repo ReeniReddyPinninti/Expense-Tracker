@@ -65,6 +65,7 @@ function Dashboard() {
   const [newRecurringCategoryId, setNewRecurringCategoryId] = useState('');
 
   const [confirmClear, setConfirmClear] = useState(null);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
     try {
@@ -153,6 +154,7 @@ function Dashboard() {
     setIsMixed(false);
     setEditingId(null);
     setNotes('');
+    setShowExpenseModal(false);
   }
 
   function handleMixedChange(checked) {
@@ -222,6 +224,7 @@ function Dashboard() {
     setExpenseDate(fromDateOnlyString(expense.date));
     setIsMixed(expense.isMixed || false);
     setNotes(expense.notes || '');
+    setShowExpenseModal(true);
   }
 
   function requestDelete(id) {
@@ -501,7 +504,7 @@ function Dashboard() {
         <header className="mb-8">
           <h1 className="text-3xl font-semibold text-[#3A3335]">Expense Tracker</h1>
           <p className="text-sm text-gray-400 mt-1">Track spending, set budgets, stay on top of it.</p>
-          <div className="mt-3">
+          <div className="mt-3 flex items-center justify-between">
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
@@ -511,6 +514,13 @@ function Dashboard() {
                 <option key={m} value={m}>{formatMonthLabel(m)}</option>
               ))}
             </select>
+
+            <button
+              onClick={() => { resetForm(); setShowExpenseModal(true); }}
+              className="bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 text-sm font-medium"
+            >
+              + Add Expense
+            </button>
           </div>
         </header>
 
@@ -539,21 +549,34 @@ function Dashboard() {
         )}
 
         {/* Add / Edit expense form */}
-        <ExpenseForm
-          amount={amount} setAmount={setAmount}
-          shopName={shopName} setShopName={setShopName}
-          expenseDate={expenseDate} setExpenseDate={setExpenseDate}
-          categoryId={categoryId} setCategoryId={setCategoryId}
-          categories={categories}
-          isCreatingCategory={isCreatingCategory} setIsCreatingCategory={setIsCreatingCategory}
-          newCategoryName={newCategoryName} setNewCategoryName={setNewCategoryName}
-          handleCreateCategory={handleCreateCategory}
-          isMixed={isMixed} handleMixedChange={handleMixedChange}
-          notes={notes} setNotes={setNotes}
-          editingId={editingId}
-          handleSubmit={handleSubmit}
-          resetForm={resetForm}
-        />
+
+        {showExpenseModal && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 relative">
+              <button
+                onClick={resetForm}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl"
+              >
+                ✕
+              </button>
+              <ExpenseForm
+                amount={amount} setAmount={setAmount}
+                shopName={shopName} setShopName={setShopName}
+                expenseDate={expenseDate} setExpenseDate={setExpenseDate}
+                categoryId={categoryId} setCategoryId={setCategoryId}
+                categories={categories}
+                isCreatingCategory={isCreatingCategory} setIsCreatingCategory={setIsCreatingCategory}
+                newCategoryName={newCategoryName} setNewCategoryName={setNewCategoryName}
+                handleCreateCategory={handleCreateCategory}
+                isMixed={isMixed} handleMixedChange={handleMixedChange}
+                notes={notes} setNotes={setNotes}
+                editingId={editingId}
+                handleSubmit={handleSubmit}
+                resetForm={resetForm}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Budgets */}
         <BudgetPanel
