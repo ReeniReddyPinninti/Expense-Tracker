@@ -66,6 +66,7 @@ function Dashboard() {
 
   const [confirmClear, setConfirmClear] = useState(null);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
     try {
@@ -524,7 +525,29 @@ function Dashboard() {
           </div>
         </header>
 
-        {/* Summary cards */}
+        {/* Tab nav */}
+        <div className="flex gap-2 mb-8 border-b border-gray-200">
+          {[
+            { key: 'overview', label: 'Overview' },
+            { key: 'expenses', label: 'Expenses' },
+            { key: 'budgets', label: 'Budgets' },
+            { key: 'recurring', label: 'Recurring' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === tab.key
+                  ? 'border-[#D88C9A] text-[#D88C9A]'
+                  : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Summary cards (always visible, above tab content) */}
         <SummaryCards
           todaySpent={todaySpent}
           weekSpent={weekSpent}
@@ -548,8 +571,7 @@ function Dashboard() {
           </div>
         )}
 
-        {/* Add / Edit expense form */}
-
+        {/* Add / Edit expense modal — unchanged, global */}
         {showExpenseModal && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 relative">
@@ -578,144 +600,151 @@ function Dashboard() {
           </div>
         )}
 
-        {/* Budgets */}
-        <BudgetPanel
-          budgetScope={budgetScope} setBudgetScope={setBudgetScope}
-          budgetLimit={budgetLimit} setBudgetLimit={setBudgetLimit}
-          categories={categories}
-          handleSetBudget={handleSetBudget}
-          budgetStatus={budgetStatus}
-          getCategoryName={getCategoryName}
-          requestClearAllBudgets={requestClearAllBudgets}
-          requestClearBudget={requestClearBudget}
-        />
+        {/* Tab content */}
+        {activeTab === 'overview' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <h2 className="text-lg font-semibold mb-2 text-[#3A3335]">Spend by Category</h2>
+              {categoryData.length === 0 ? (
+                <p className="text-sm text-gray-400 py-16 text-center">No expenses yet</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={60}
+                      outerRadius={90}
+                      paddingAngle={3}
+                    >
+                      {categoryData.map((entry, index) => (
+                        <Cell key={entry.name} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </div>
 
-        {/* Recurring items */}
-        <RecurringPanel
-          recurringItems={recurringItems}
-          showAddRecurring={showAddRecurring} setShowAddRecurring={setShowAddRecurring}
-          newRecurringName={newRecurringName} setNewRecurringName={setNewRecurringName}
-          newRecurringAmount={newRecurringAmount} setNewRecurringAmount={setNewRecurringAmount}
-          newRecurringCategoryId={newRecurringCategoryId} setNewRecurringCategoryId={setNewRecurringCategoryId}
-          categories={categories}
-          handleAddRecurring={handleAddRecurring}
-          isLoggedThisMonth={isLoggedThisMonth}
-          quickLogRecurring={quickLogRecurring}
-          handleDeleteRecurring={handleDeleteRecurring}
-        />
-
-        {/* Charts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold mb-2 text-[#3A3335]">Spend by Category</h2>
-            {categoryData.length === 0 ? (
-              <p className="text-sm text-gray-400 py-16 text-center">No expenses yet</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={categoryData}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={3}
-                  >
-                    {categoryData.map((entry, index) => (
-                      <Cell key={entry.name} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <h2 className="text-lg font-semibold mb-2 text-[#3A3335]">Spend Over Time</h2>
+              {timeData.length === 0 ? (
+                <p className="text-sm text-gray-400 py-16 text-center">No expenses yet</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={timeData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#9CA3AF' }} />
+                    <YAxis tick={{ fontSize: 12, fill: '#9CA3AF' }} />
+                    <Tooltip />
+                    <Bar dataKey="amount" fill="#D88C9A" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
+        )}
 
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold mb-2 text-[#3A3335]">Spend Over Time</h2>
-            {timeData.length === 0 ? (
-              <p className="text-sm text-gray-400 py-16 text-center">No expenses yet</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={timeData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#9CA3AF' }} />
-                  <YAxis tick={{ fontSize: 12, fill: '#9CA3AF' }} />
-                  <Tooltip />
-                  <Bar dataKey="amount" fill="#D88C9A" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+        {activeTab === 'expenses' && (
+          <div id="expense-list-section">
+            <ExpenseList
+              filteredExpenses={filteredExpenses}
+              hasAnyExpenses={monthExpenses.length > 0}
+              categories={categories}
+              searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+              filterCategory={filterCategory} setFilterCategory={setFilterCategory}
+              sortBy={sortBy} setSortBy={setSortBy}
+              startEditing={startEditing}
+              requestDelete={requestDelete}
+              requestClearAllExpenses={requestClearAllExpenses}
+              fromDateOnlyString={fromDateOnlyString}
+              monthLabel={formatMonthLabel(selectedMonth)}
+            />
           </div>
-        </div>
+        )}
 
+        {activeTab === 'budgets' && (
+          <BudgetPanel
+            budgetScope={budgetScope} setBudgetScope={setBudgetScope}
+            budgetLimit={budgetLimit} setBudgetLimit={setBudgetLimit}
+            categories={categories}
+            handleSetBudget={handleSetBudget}
+            budgetStatus={budgetStatus}
+            getCategoryName={getCategoryName}
+            requestClearAllBudgets={requestClearAllBudgets}
+            requestClearBudget={requestClearBudget}
+          />
+        )}
+
+        {activeTab === 'recurring' && (
+          <RecurringPanel
+            recurringItems={recurringItems}
+            showAddRecurring={showAddRecurring} setShowAddRecurring={setShowAddRecurring}
+            newRecurringName={newRecurringName} setNewRecurringName={setNewRecurringName}
+            newRecurringAmount={newRecurringAmount} setNewRecurringAmount={setNewRecurringAmount}
+            newRecurringCategoryId={newRecurringCategoryId} setNewRecurringCategoryId={setNewRecurringCategoryId}
+            categories={categories}
+            handleAddRecurring={handleAddRecurring}
+            isLoggedThisMonth={isLoggedThisMonth}
+            quickLogRecurring={quickLogRecurring}
+            handleDeleteRecurring={handleDeleteRecurring}
+          />
+        )}
+
+        {/* Heatmap stays here for now — moves to its own Yearly tab tomorrow */}
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
           <SpendHeatmap expenses={expenses} />
         </div>
 
-        {/* Expense list */}
-        <div id="expense-list-section">
-          <ExpenseList
-            filteredExpenses={filteredExpenses}
-            hasAnyExpenses={monthExpenses.length > 0}
-            categories={categories}
-            searchTerm={searchTerm} setSearchTerm={setSearchTerm}
-            filterCategory={filterCategory} setFilterCategory={setFilterCategory}
-            sortBy={sortBy} setSortBy={setSortBy}
-            startEditing={startEditing}
-            requestDelete={requestDelete}
-            requestClearAllExpenses={requestClearAllExpenses}
-            fromDateOnlyString={fromDateOnlyString}
-            monthLabel={formatMonthLabel(selectedMonth)}
-          />
-        </div>
-
       </div>
+
       {toast && (
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast(null)}
-      />
-    )}
-    
-    {confirmDeleteId && (
-      <ConfirmModal
-        title="Delete this expense?"
-        message="This can't be undone."
-        onConfirm={confirmDelete}
-        onCancel={cancelDelete}
-      />
-    )}
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
-    {pendingUpdate && (
-      <ConfirmModal
-        title="Save these changes?"
-        message={`${pendingUpdate.shopName} — $${pendingUpdate.amount}`}
-        confirmLabel="Save"
-        confirmColor="pink"
-        onConfirm={confirmUpdate}
-        onCancel={cancelUpdate}
-      />
-    )}
+      {confirmDeleteId && (
+        <ConfirmModal
+          title="Delete this expense?"
+          message="This can't be undone."
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
+        />
+      )}
 
-    {confirmClear && (
-      <ConfirmModal
-        title="Are you sure?"
-        message={confirmClear.label}
-        onConfirm={confirmClearAction}
-        onCancel={cancelClear}
-      />
-    )}
+      {pendingUpdate && (
+        <ConfirmModal
+          title="Save these changes?"
+          message={`${pendingUpdate.shopName} — $${pendingUpdate.amount}`}
+          confirmLabel="Save"
+          confirmColor="pink"
+          onConfirm={confirmUpdate}
+          onCancel={cancelUpdate}
+        />
+      )}
 
-    <button
-      onClick={quickAdd}
-      title="Quick add (press 'a')"
-      className="fixed bottom-6 right-6 z-40 bg-[#D88C9A] hover:bg-[#C77B8C] text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-2xl transition-colors"
-    >
-      +
-    </button>
+      {confirmClear && (
+        <ConfirmModal
+          title="Are you sure?"
+          message={confirmClear.label}
+          onConfirm={confirmClearAction}
+          onCancel={cancelClear}
+        />
+      )}
+
+      <button
+        onClick={quickAdd}
+        title="Quick add (press 'a')"
+        className="fixed bottom-6 right-6 z-40 bg-[#D88C9A] hover:bg-[#C77B8C] text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-2xl transition-colors"
+      >
+        +
+      </button>
 
     </div>
   );
