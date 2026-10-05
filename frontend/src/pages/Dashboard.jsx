@@ -362,8 +362,11 @@ function Dashboard() {
   const showMiscNudge = miscExpenses.length >= 3 && miscPercentage >= 20;
 
   function reviewMiscellaneous() {
-    setFilterCategory(miscCategory?._id || '');
-    document.getElementById('expense-list-section')?.scrollIntoView({ behavior: 'smooth' });
+    setFilterCategory(miscCategory._id);   // keep whatever line you already have here
+    setActiveTab('expenses');
+    setTimeout(() => {
+      document.getElementById('expense-list-section')?.scrollIntoView({ behavior: 'smooth' });
+    }, 50);
   }
 
   useEffect(() => {
@@ -532,6 +535,7 @@ function Dashboard() {
             { key: 'expenses', label: 'Expenses' },
             { key: 'budgets', label: 'Budgets' },
             { key: 'recurring', label: 'Recurring' },
+            { key: 'yearly', label: 'Yearly' },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -694,10 +698,11 @@ function Dashboard() {
           />
         )}
 
-        {/* Heatmap stays here for now — moves to its own Yearly tab tomorrow */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
-          <SpendHeatmap expenses={expenses} />
-        </div>
+        {activeTab === 'yearly' && (
+          <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
+            <SpendHeatmap expenses={expenses} />
+          </div>
+        )}
 
       </div>
 
