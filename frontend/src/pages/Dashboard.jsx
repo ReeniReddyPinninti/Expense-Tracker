@@ -7,13 +7,14 @@ import Toast from '../components/Toast';
 import { getExpenses, createExpense, updateExpense, deleteExpense, deleteAllExpenses, deleteExpensesByCategory } from '../api/expenseApi';
 import { getBudgets, setBudget, deleteAllBudgets, deleteBudgetByScope } from '../api/budgetApi';
 import { getMonthKey, getCurrentMonthKey, getAvailableMonths, formatMonthLabel, isToday, isThisWeek, getAlertedThresholds, saveAlertedThreshold } from '../utils/monthHelpers';
-import { getRecurringItems, createRecurringItem, deleteRecurringItem } from '../api/recurringApi';
+import { getRecurringItems, createRecurringItem, updateRecurringItem, deleteRecurringItem } from '../api/recurringApi';
 import ConfirmModal from '../components/ConfirmModal';
 import SummaryCards from '../components/SummaryCards';
 import ExpenseForm from '../components/ExpenseForm';
 import ExpenseList from '../components/ExpenseList';
 import BudgetPanel from '../components/BudgetPanel';
 import RecurringPanel from '../components/RecurringPanel';
+import RecurringEditModal from '../components/RecurringEditModal';
 
 const CATEGORY_COLORS = ['#D88C9A', '#C77B8C', '#E8B4BC', '#B5828C', '#F2D4D7', '#9C6B7A', '#EFC3CB'];
 
@@ -67,6 +68,10 @@ function Dashboard() {
   const [confirmClear, setConfirmClear] = useState(null);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+
+  const [editingRecurring, setEditingRecurring] = useState(null);
+  const [editRecurringAmount, setEditRecurringAmount] = useState('');
+  const [editRecurringScope, setEditRecurringScope] = useState('month');
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
     try {
@@ -293,12 +298,41 @@ function Dashboard() {
     );
   }
 
+  function getRecurringAmount(item) {
+    return item.monthlyOverrides?.[selectedMonth] ?? item.amount;
+  }
+
   function quickLogRecurring(item) {
+    setEditingId(null);
     setShopName(item.name);
-    setAmount(item.amount);
+    setAmount(getRecurringAmount(item));
     setCategoryId(item.category?._id || '');
     setExpenseDate(new Date());
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setIsMixed(false);
+    setNotes('');
+    setShowExpenseModal(true);
+  }
+
+  function startEditRecurring(item) {
+    setEditingRecurring(item);
+    setEditRecurringAmount(getRecurringAmount(item));
+    setEditRecurringScope('month');
+  }
+
+  async function handleSaveRecurringEdit(e) {
+    e.preventDefault();
+    try {
+      const updated = await updateRecurringItem(editingRecurring._id, {
+        amount: Number(editRecurringAmount),
+        scope: editRecurringScope,
+        month: selectedMonth,
+      });
+      setRecurringItems((prev) => prev.map((i) => (i._id === updated._id ? updated : i)));
+      setEditingRecurring(null);
+      setToast({ message: 'Recurring item updated', type: 'success' });
+    } catch (err) {
+      setToast({ message: 'Could not update recurring item', type: 'error' });
+    }
   }
 
   async function handleAddRecurring(e) {
@@ -695,6 +729,8 @@ function Dashboard() {
             isLoggedThisMonth={isLoggedThisMonth}
             quickLogRecurring={quickLogRecurring}
             handleDeleteRecurring={handleDeleteRecurring}
+            getRecurringAmount={getRecurringAmount}
+            startEditRecurring={startEditRecurring}
           />
         )}
 
@@ -740,6 +776,17 @@ function Dashboard() {
           message={confirmClear.label}
           onConfirm={confirmClearAction}
           onCancel={cancelClear}
+        />
+      )}
+
+      {editingRecurring && (
+        <RecurringEditModal
+          item={editingRecurring}
+          amount={editRecurringAmount} setAmount={setEditRecurringAmount}
+          scope={editRecurringScope} setScope={setEditRecurringScope}
+          monthLabel={formatMonthLabel(selectedMonth)}
+          onSave={handleSaveRecurringEdit}
+          onCancel={() => setEditingRecurring(null)}
         />
       )}
 

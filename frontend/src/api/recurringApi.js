@@ -10,6 +10,11 @@ export async function createRecurringItem(data) {
   return res.data;
 }
 
+export async function updateRecurringItem(id, data) {
+  const res = await axiosClient.put(`/recurring/${id}`, data);
+  return res.data;
+}
+
 export async function deleteRecurringItem(id) {
   const res = await axiosClient.delete(`/recurring/${id}`);
   return res.data;

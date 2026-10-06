@@ -9,6 +9,8 @@ function RecurringPanel({
   isLoggedThisMonth,
   quickLogRecurring,
   handleDeleteRecurring,
+  getRecurringAmount,
+  startEditRecurring,
 }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
@@ -65,13 +67,20 @@ function RecurringPanel({
         <ul className="divide-y divide-gray-100">
           {recurringItems.map((item) => {
             const logged = isLoggedThisMonth(item);
+            const effective = getRecurringAmount(item);
+            const isOverridden = effective !== item.amount;
             return (
               <li key={item._id} className="py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className={logged ? 'text-gray-400 line-through' : 'text-[#3A3335] font-medium'}>
                     {item.name}
                   </span>
-                  <span className="text-sm text-gray-400">${item.amount}</span>
+                  <span className="text-sm text-gray-400">${effective}</span>
+                  {isOverridden && (
+                    <span className="text-[10px] bg-[#FDF2F4] text-[#9C6B7A] px-2 py-0.5 rounded-full">
+                      this month only
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   {logged ? (
@@ -84,6 +93,12 @@ function RecurringPanel({
                       Log now
                     </button>
                   )}
+                  <button
+                    onClick={() => startEditRecurring(item)}
+                    className="text-xs text-gray-400 hover:text-[#D88C9A]"
+                  >
+                    Edit
+                  </button>
                   <button
                     onClick={() => handleDeleteRecurring(item._id)}
                     className="text-xs text-gray-300 hover:text-red-400"
