@@ -25,6 +25,54 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Monthly statement: expenses for one month, grouped by category
+router.get('/summary/:month', async (req, res) => {
+  try {
+    const { month } = req.params;
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return res.status(400).json({ message: 'month must look like YYYY-MM' });
+    }
+
+    // Works whether date is stored as a "YYYY-MM-DD" string or a full timestamp
+    const toDay = (d) => (d instanceof Date ? d.toISOString() : String(d)).split('T')[0];
+
+    const all = await Expense.find().populate('category');
+    const monthExpenses = all
+      .filter((e) => toDay(e.date).slice(0, 7) === month)
+      .sort((a, b) => toDay(a.date).localeCompare(toDay(b.date)));
+
+    const groups = {};
+    for (const e of monthExpenses) {
+      const name = e.category?.name || 'Miscellaneous';
+      if (!groups[name]) groups[name] = { name, total: 0, count: 0, expenses: [] };
+      groups[name].total += e.amount;
+      groups[name].count += 1;
+      groups[name].expenses.push({
+        _id: e._id,
+        date: toDay(e.date),
+        shopName: e.shopName,
+        amount: e.amount,
+        notes: e.notes || '',
+        isMixed: e.isMixed || false,
+      });
+    }
+
+    const round = (n) => Math.round(n * 100) / 100;
+    const categories = Object.values(groups)
+      .map((g) => ({ ...g, total: round(g.total) }))
+      .sort((a, b) => b.total - a.total);
+
+    res.json({
+      month,
+      totalSpent: round(categories.reduce((sum, g) => sum + g.total, 0)),
+      expenseCount: monthExpenses.length,
+      categories,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // READ - get a single expense by id
 router.get('/:id', async (req, res) => {
   try {
