@@ -29,3 +29,8 @@ export async function deleteExpensesByCategory(categoryId) {
   const res = await axiosClient.delete(`/expenses/category/${categoryId}`);
   return res.data;
 }
+
+export async function getMonthSummary(month) {
+  const res = await axiosClient.get(`/expenses/summary/${month}`);
+  return res.data;
+}

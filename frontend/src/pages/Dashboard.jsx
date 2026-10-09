@@ -4,7 +4,7 @@ import { getCategorySpendData, getSpendOverTimeData } from '../utils/chartHelper
 import SpendHeatmap from '../components/SpendHeatmap';
 import { getCategories, createCategory } from '../api/categoryApi';
 import Toast from '../components/Toast';
-import { getExpenses, createExpense, updateExpense, deleteExpense, deleteAllExpenses, deleteExpensesByCategory } from '../api/expenseApi';
+import { getExpenses, createExpense, updateExpense, deleteExpense, deleteAllExpenses, deleteExpensesByCategory, getMonthSummary } from '../api/expenseApi';
 import { getBudgets, setBudget, deleteAllBudgets, deleteBudgetByScope } from '../api/budgetApi';
 import { getMonthKey, getCurrentMonthKey, getAvailableMonths, formatMonthLabel, isToday, isThisWeek, getAlertedThresholds, saveAlertedThreshold } from '../utils/monthHelpers';
 import { getRecurringItems, createRecurringItem, updateRecurringItem, deleteRecurringItem } from '../api/recurringApi';
@@ -15,6 +15,7 @@ import ExpenseList from '../components/ExpenseList';
 import BudgetPanel from '../components/BudgetPanel';
 import RecurringPanel from '../components/RecurringPanel';
 import RecurringEditModal from '../components/RecurringEditModal';
+import { downloadSummaryCsv, downloadSummaryPdf } from '../utils/summaryExport';
 
 const CATEGORY_COLORS = ['#D88C9A', '#C77B8C', '#E8B4BC', '#B5828C', '#F2D4D7', '#9C6B7A', '#EFC3CB'];
 
@@ -364,6 +365,21 @@ function Dashboard() {
     }
   }
 
+  async function handleDownloadSummary(format) {
+    try {
+      const summary = await getMonthSummary(selectedMonth);
+      const label = formatMonthLabel(selectedMonth);
+      if (summary.expenseCount === 0) {
+        setToast({ message: `No expenses in ${label} to export`, type: 'error' });
+        return;
+      }
+      if (format === 'csv') downloadSummaryCsv(summary, label);
+      else downloadSummaryPdf(summary, label);
+    } catch (err) {
+      setToast({ message: 'Could not generate summary', type: 'error' });
+    }
+  }
+
   const monthExpenses = expenses.filter((e) => getMonthKey(e.date) === selectedMonth);
 
   const categoryData = getCategorySpendData(monthExpenses);
@@ -543,15 +559,29 @@ function Dashboard() {
           <h1 className="text-3xl font-semibold text-[#3A3335]">Expense Tracker</h1>
           <p className="text-sm text-gray-400 mt-1">Track spending, set budgets, stay on top of it.</p>
           <div className="mt-3 flex items-center justify-between">
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="border border-gray-200 rounded-lg text-sm p-2 focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
-            >
-              {availableMonths.map((m) => (
-                <option key={m} value={m}>{formatMonthLabel(m)}</option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="border border-gray-200 rounded-lg text-sm p-2 focus:outline-none focus:ring-2 focus:ring-[#D88C9A]"
+              >
+                {availableMonths.map((m) => (
+                  <option key={m} value={m}>{formatMonthLabel(m)}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => handleDownloadSummary('csv')}
+                className="border border-gray-200 rounded-lg text-xs text-gray-500 hover:text-[#D88C9A] px-3 py-2.5"
+              >
+                Download CSV
+              </button>
+              <button
+                onClick={() => handleDownloadSummary('pdf')}
+                className="border border-gray-200 rounded-lg text-xs text-gray-500 hover:text-[#D88C9A] px-3 py-2.5"
+              >
+                Download PDF
+              </button>
+            </div>
 
             <button
               onClick={() => { resetForm(); setShowExpenseModal(true); }}
